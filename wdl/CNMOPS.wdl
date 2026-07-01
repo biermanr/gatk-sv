@@ -192,6 +192,17 @@ task CleanCNMops {
 
     mkdir calls
     grep -v "#" cnmops.gff > cnmops.gff1
+
+    if [ ! -s cnmops.gff1 ]; then
+      echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources" > ~{batch}.DEL.~{prefix}.bed
+      echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources" > ~{batch}.DUP.~{prefix}.bed
+      bgzip -f ~{batch}.DEL.~{prefix}.bed
+      tabix -f ~{batch}.DEL.~{prefix}.bed.gz
+      bgzip -f ~{batch}.DUP.~{prefix}.bed
+      tabix -f ~{batch}.DUP.~{prefix}.bed.gz
+      exit 0
+    fi
+
     echo "./cnmops.gff1">GFF.list
     /opt/WGD/bin/cleancnMOPS.sh -z -o calls/ -S ~{exclude} sample.list GFF.list
 
@@ -302,6 +313,12 @@ task CNSampleNormal {
       awk -f <(echo "$col_a") ~{chr}.RD.txt | tr ' ' '\t' > ~{chr}.~{mode}.RD.txt
     fi
 
+    mkdir -p calls
+    if [ "$(wc -l < ~{chr}.~{mode}.RD.txt)" -le 1 ]; then
+      touch calls/cnMOPS.cnMOPS.gff
+      exit 0
+    fi
+
     # redirect stdout and stderr to cnmops.out so that EMPTY_OUTPUT_ERROR can be detected, but use tee to also output them to
     # terminal so that errors can be debugged
     EMPTY_OUTPUT_ERROR="No CNV regions in result object. Rerun cn.mops with different parameters!"
@@ -311,6 +328,8 @@ task CNSampleNormal {
     set -e
     if [ ! $RC -eq 0 ]; then
       if grep -q "$EMPTY_OUTPUT_ERROR" "cnmops.out"; then
+        touch calls/cnMOPS.cnMOPS.gff
+      elif grep -q "syntax error: operand expected" "cnmops.out" || grep -q "subscript out of bounds" "cnmops.out"; then
         touch calls/cnMOPS.cnMOPS.gff
       else
         echo "cnMOPS_workflow.sh returned a non-zero code that was not due to an empty call file."

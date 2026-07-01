@@ -61,6 +61,7 @@ workflow GatherBatchEvidence {
 
     # gCNV inputs
     File contig_ploidy_model_tar
+    File contig_ploidy_priors
     Array[File] gcnv_model_tars
 
     File? gatk4_jar_override
@@ -325,6 +326,7 @@ workflow GatherBatchEvidence {
       counts = CondenseReadCounts.out,
       count_entity_ids = samples,
       contig_ploidy_model_tar = contig_ploidy_model_tar,
+      contig_ploidy_priors = contig_ploidy_priors,
       gcnv_model_tars = gcnv_model_tars,
       gatk_docker = select_first([gcnv_gatk_docker, gatk_docker]),
       linux_docker = linux_docker,

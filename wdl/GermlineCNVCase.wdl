@@ -24,6 +24,7 @@
 version 1.0
 
 import "GermlineCNVTasks.wdl" as CNVTasks
+import "GermlineCNVCohort.wdl" as CNVCohort
 
 workflow CNVGermlineCaseWorkflow {
 
@@ -34,6 +35,7 @@ workflow CNVGermlineCaseWorkflow {
       Array[File] counts
       Array[String] count_entity_ids
       File contig_ploidy_model_tar
+      File contig_ploidy_priors
       Array[File] gcnv_model_tars
       String gatk_docker
       String linux_docker
@@ -101,10 +103,11 @@ workflow CNVGermlineCaseWorkflow {
       RuntimeAttr? runtime_attr_explode
     }
 
-    call DetermineGermlineContigPloidyCaseMode {
+    call CNVCohort.DetermineGermlineContigPloidyCohortMode as DetermineGermlineContigPloidyCohortMode {
         input:
+            cohort_entity_id = "case",
             read_count_files = counts,
-            contig_ploidy_model_tar = contig_ploidy_model_tar,
+            contig_ploidy_priors = contig_ploidy_priors,
             gatk4_jar_override = gatk4_jar_override,
             gatk_docker = gatk_docker,
             mapping_error_rate = ploidy_mapping_error_rate,
@@ -117,7 +120,7 @@ workflow CNVGermlineCaseWorkflow {
             input:
                 scatter_index = scatter_index,
                 read_count_files = counts,
-                contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
+                contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar,
                 gcnv_model_tar = gcnv_model_tars[scatter_index],
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
@@ -165,7 +168,7 @@ workflow CNVGermlineCaseWorkflow {
                 denoising_configs = GermlineCNVCallerCaseMode.denoising_config_json,
                 gcnvkernel_version = GermlineCNVCallerCaseMode.gcnvkernel_version_json,
                 sharded_interval_lists = GermlineCNVCallerCaseMode.sharded_interval_list,
-                contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
+                contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar,
                 allosomal_contigs = allosomal_contigs,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
                 sample_index = sample_index,
@@ -177,14 +180,14 @@ workflow CNVGermlineCaseWorkflow {
 
     call CNVTasks.ExplodePloidyCalls {
         input :
-            contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
+            contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar,
             samples = count_entity_ids,
             linux_docker = linux_docker,
             runtime_attr_override = runtime_attr_explode
     }
 
     output {
-        File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar
+        File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar
         Array[File] sample_contig_ploidy_calls_tars = ExplodePloidyCalls.sample_contig_ploidy_calls_tar
         Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_call_tars
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCaseMode.gcnv_tracking_tar
