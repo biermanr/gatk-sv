@@ -1,10 +1,21 @@
 # Running GATK-SV on the Della SLURM cluster (Apptainer, no Docker)
 
 GATK-SV is officially GCP/Terra-only. This directory holds the recipe for running
-it on Princeton's **Della** SLURM cluster with **Apptainer** (no Docker). Two
-execution engines were brought up; **miniwdl-slurm is the recommended path**
-because it dispatches each WDL task as its own right-sized `sbatch` job, so the
-~287-shard gCNV scatter runs as parallel cluster jobs instead of OOM-ing a node.
+it on Princeton's **Della** SLURM cluster with **Apptainer** (no Docker).
+
+## Status / recommended approach (hybrid)
+
+- **miniwdl-slurm** dispatches each WDL task as its own right-sized `sbatch` job,
+  so the ~287-shard gCNV scatter runs as parallel cluster jobs instead of OOM-ing
+  a single node. **Proven end-to-end for `GatherSampleEvidence`** (Manta/Wham/
+  Scramble + coverage/PE/SR). This is the path for the parallel-heavy modules.
+- The **full `GATKSVPipelineBatch` on miniwdl is a work in progress** — miniwdl is
+  stricter than Cromwell and the deep pipeline hits a tail of incompatibilities
+  (see "Known miniwdl full-batch blockers" below). Fixable, but iterative.
+- **Local Cromwell (Track A)** is the engine GATK-SV is built for; with copy
+  localization + a concurrency cap it runs the *whole* pipeline with far fewer
+  surprises (just slower, single-node). Use it for the full pipeline / as the
+  correctness baseline while the miniwdl full-batch port is completed.
 
 The 6 patched WDLs this depends on are committed on this branch (`slurm-della`):
 gCNV cohort-mode ploidy + `contig_ploidy_priors`, the WGD-100bp / gCNV-2kb
@@ -68,6 +79,21 @@ correctness reference. See the `gatksv_run/` workspace (`run_cromwell.sbatch`,
    `/scratch/gpfs` (petabytes free); no per-task disk provisioning needed.
 7. **Offline compute nodes** — no route to `us.gcr.io`. Pre-seed the SIF/image cache
    on a login node; disable Cromwell's remote docker-hash lookup.
+
+## Known miniwdl full-batch blockers (WIP)
+
+Progress reaches GatherBatchEvidence, then:
+1. **`mv`/`rm`/`tabix` on input files** (e.g. `MergeSREvidence` does
+   `mv ... evidence.list`) → "Device or resource busy" on a bind mount.
+   **Fixed** by `[file_io] copy_input_files = true` (in `miniwdl.cfg`).
+2. **`CondenseReadCounts` (CollectCoverage.wdl):** miniwdl raises
+   `EvalError: "expected string or buffer"` anchored at the
+   `~{default=2000 max_interval_size}` line. The placeholder alone evaluates fine
+   in isolation, so the trigger is context-specific and still under investigation
+   — the current stopping point for the full-batch miniwdl port. Likely
+   workaround: patch CollectCoverage.wdl to compute
+   `Int max_interval_size_ = select_first([max_interval_size, 2000])` and reference
+   that instead of the `~{default=...}` placeholder option.
 
 ## Cluster specifics
 - `sbatch` requires `--account` (`akey`); partition `cpu` (15-day limit).
