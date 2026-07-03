@@ -368,6 +368,9 @@ task GroupedSVClusterTask {
     JVM_MAX_MEM=$(getJavaMem MemTotal)
     echo "JVM memory: $JVM_MAX_MEM"
 
+    # On non-GCS backends the co-located .tbi is not localized with the VCF
+    # (localization_optional); index it so GATK can read the block-compressed VCF.
+    [ -s ~{vcf}.tbi ] || tabix -p vcf ~{vcf}
     gatk --java-options "-Xmx${JVM_MAX_MEM}" GroupedSVCluster \
       ~{"-L " + contig} \
       --reference ~{reference_fasta} \
