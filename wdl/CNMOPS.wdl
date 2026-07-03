@@ -191,7 +191,10 @@ task CleanCNMops {
     cat ~{sep=" "  NR1} ~{sep=" "  NR2} ~{sep=" "  MR1} ~{sep=" "  MR2} ~{FR1} ~{FR2} > cnmops.gff
 
     mkdir calls
-    grep -v "#" cnmops.gff > cnmops.gff1
+    # grep exits 1 when cnmops.gff has no non-comment lines (empty cnMOPS calls,
+    # expected for tiny cohorts); tolerate it so the empty-guard below can run
+    # under `set -euo pipefail`.
+    grep -v "#" cnmops.gff > cnmops.gff1 || true
 
     if [ ! -s cnmops.gff1 ]; then
       echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources" > ~{batch}.DEL.~{prefix}.bed
