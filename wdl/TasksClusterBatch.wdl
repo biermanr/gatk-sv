@@ -89,6 +89,11 @@ task SVCluster {
         echo "JVM memory: $JVM_MAX_MEM"
 
         if ~{length(vcfs) > 0}; then
+            # vcfs is localization_optional (GATK streams + reads the co-located
+            # .tbi from GCS on the cloud). On non-GCS backends the indexes are not
+            # localized with the VCFs, and GATK no longer accepts unindexed
+            # block-compressed VCFs, so index any that are missing.
+            while read -r v; do [ -s "${v}.tbi" ] || tabix -p vcf "${v}"; done < ~{write_lines(vcfs)}
             awk '{print "-V "$0}' ~{write_lines(vcfs)} > arguments.txt
         elif ~{defined(vcfs_tar)}; then
             mkdir vcfs
