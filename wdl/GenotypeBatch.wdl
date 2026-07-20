@@ -10,12 +10,16 @@ workflow GenotypeBatch {
     # TODO: this vcf is sites-only and all samples in rd_file/pe_file/sr_file will be genotyped at these sites,
     # but we should add an option to subset to just retained samples in case of sample filtering
     File vcf
+    File vcf_index
 
     File training_intervals
     File median_coverage
     File rd_file
+    File rd_file_index
     File pe_file
+    File pe_file_index
     File sr_file
+    File sr_file_index
     File reference_dict
     File ploidy_table
     File depth_exclusion_intervals
@@ -37,16 +41,16 @@ workflow GenotypeBatch {
   call TrainSVGenotyping {
     input:
       vcf = vcf,
-      vcf_index = vcf + ".tbi",
+      vcf_index = vcf_index,
       output_name = batch,
       training_intervals = training_intervals,
       median_coverage = median_coverage,
       rd_file = rd_file,
-      rd_file_index = rd_file + ".tbi",
+      rd_file_index = rd_file_index,
       pe_file = pe_file,
-      pe_file_index = pe_file + ".tbi",
+      pe_file_index = pe_file_index,
       sr_file = sr_file,
-      sr_file_index = sr_file + ".tbi",
+      sr_file_index = sr_file_index,
       reference_dict = reference_dict,
       ploidy_table = ploidy_table,
       depth_exclusion_intervals = depth_exclusion_intervals,
@@ -63,16 +67,16 @@ workflow GenotypeBatch {
     call GenotypeSVs {
       input:
         vcf = vcf,
-        vcf_index = vcf + ".tbi",
+        vcf_index = vcf_index,
         output_prefix = "~{batch}.genotype_batch.~{contig}",
         contig = contig,
         median_coverage = median_coverage,
         rd_file = rd_file,
-        rd_file_index = rd_file + ".tbi",
+        rd_file_index = rd_file_index,
         pe_file = pe_file,
-        pe_file_index = pe_file + ".tbi",
+        pe_file_index = pe_file_index,
         sr_file = sr_file,
-        sr_file_index = sr_file + ".tbi",
+        sr_file_index = sr_file_index,
         reference_dict = reference_dict,
         ploidy_table = ploidy_table,
         depth_exclusion_intervals = depth_exclusion_intervals,

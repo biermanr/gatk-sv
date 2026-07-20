@@ -11,6 +11,7 @@ workflow TinyResolve {
     File vcf_tar                  # Tarballed VCFs
     File cytoband
     Array[File] discfile
+    Array[File] discfile_idx
     File mei_bed
     Int samples_per_shard = 25
     String sv_pipeline_docker
@@ -19,9 +20,6 @@ workflow TinyResolve {
     RuntimeAttr? runtime_attr_untar
   }
 
-  scatter (disc in discfile) {
-    File discfile_idx = disc + ".tbi"
-  }
   File cytoband_idx = cytoband + ".tbi"
 
   Int num_samples = length(samples)

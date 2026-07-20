@@ -1,0 +1,10 @@
+# Symlinks to pre-pulled SIF images (host-specific, offline-safe pull skip)
+image_cache/
+
+# File-based miniwdl call cache (runtime state, not source)
+call_cache/
+
+# miniwdl run directories and orchestrator logs/tmp
+runs/
+logs/
+tmp/

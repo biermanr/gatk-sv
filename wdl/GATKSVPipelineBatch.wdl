@@ -31,6 +31,7 @@ workflow GATKSVPipelineBatch {
     # Optionally provide calls and evidence (override caller flags below)
     Array[File]? counts_files_input
     Array[File]? pe_files_input
+    Array[File]? pe_files_index_input
     Array[File]? sr_files_input
     Array[File]? sd_files_input
     Array[File?]? baf_files_input
@@ -194,6 +195,7 @@ workflow GATKSVPipelineBatch {
 
   Array[File] counts_files_ = if collect_coverage_ then select_all(select_first([GatherSampleEvidenceBatch.coverage_counts])) else select_first([counts_files_input])
   Array[File] pe_files_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_disc])) else select_first([pe_files_input])
+  Array[File] pe_files_index_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_disc_index])) else select_first([pe_files_index_input])
   Array[File] sr_files_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_split])) else select_first([sr_files_input])
   Array[File] sd_files_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_sd])) else select_first([sd_files_input])
 
@@ -262,6 +264,7 @@ workflow GATKSVPipelineBatch {
       bincov_matrix_index=EvidenceQC.bincov_matrix_index,
       N_IQR_cutoff_plotting = N_IQR_cutoff_plotting,
       PE_files=pe_files_,
+      PE_files_index=pe_files_index_,
       SR_files=sr_files_,
       SD_files=sd_files_,
       manta_vcfs=manta_vcfs_,
@@ -314,12 +317,16 @@ workflow GATKSVPipelineBatch {
   call genotypebatch.GenotypeBatch as GenotypeBatch {
     input:
       vcf=MergePesrDepthVcfs.concat_vcf,
+      vcf_index=MergePesrDepthVcfs.concat_vcf_idx,
       batch=name,
       rf_cutoffs=GATKSVPipelinePhase1.cutoffs,
       median_coverage=GATKSVPipelinePhase1.median_cov,
       rd_file=GATKSVPipelinePhase1.merged_bincov,
+      rd_file_index=GATKSVPipelinePhase1.merged_bincov_index,
       pe_file=GATKSVPipelinePhase1.merged_PE,
+      pe_file_index=GATKSVPipelinePhase1.merged_PE_index,
       sr_file=GATKSVPipelinePhase1.merged_SR,
+      sr_file_index=GATKSVPipelinePhase1.merged_SR_index,
       reference_dict=reference_dict,
         ploidy_table=CreatePloidyTableFromPed.out,
       contig_list = primary_contigs_list,
@@ -452,7 +459,6 @@ workflow GATKSVPipelineBatch {
   }
 
   scatter (i in range(length(samples))) {
-    File pe_files_index_ = pe_files_[i] + ".tbi"
     File sr_files_index_ = sr_files_[i] + ".tbi"
   }
 
@@ -479,7 +485,7 @@ workflow GATKSVPipelineBatch {
     File annotated_vcf_index = AnnotateVcf.annotated_vcf_index
     File metrics_file_batch = CatBatchMetrics.out
     File qc_file = BatchQC.out
-    File master_vcf_qc = MakeCohortVcf.vcf_qc
+    File? master_vcf_qc = MakeCohortVcf.vcf_qc
     File? metrics_file_makecohortvcf = MakeCohortVcf.metrics_file_makecohortvcf
     File final_sample_list = GATKSVPipelinePhase1.batch_samples_postOutlierExclusion_file
     File final_sample_outlier_list = GATKSVPipelinePhase1.outlier_samples_excluded_file

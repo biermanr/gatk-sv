@@ -48,6 +48,7 @@ workflow GatherBatchEvidence {
     Boolean rename_samples = false  # Rename samples in PE/SR/BAF to IDs in the "samples" array (always done for RD)
     Array[File?]? BAF_files         # Required for MatrixQC
     Array[File] PE_files
+    Array[File] PE_files_index
     Array[File]? ref_panel_PE_files
     Array[File] SR_files
     Array[File]? ref_panel_SR_files
@@ -415,6 +416,7 @@ workflow GatherBatchEvidence {
           vcf_tar = select_first([PreprocessPESR.std_dragen_vcf_tar, PreprocessPESR.std_manta_vcf_tar]),
           cytoband=cytoband,
           discfile=PE_files,
+          discfile_idx=PE_files_index,
           mei_bed=mei_bed,
           sv_pipeline_docker = sv_pipeline_docker,
           linux_docker = linux_docker,

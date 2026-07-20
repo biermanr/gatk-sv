@@ -45,6 +45,7 @@ workflow GATKSVPipelinePhase1 {
     # Supply either BAF_files or (SD_files and sd_locs_vcf)
     Array[File?]? BAF_files
     Array[File] PE_files
+    Array[File] PE_files_index
     Array[File] SR_files
     Array[File]? SD_files
     File? sd_locs_vcf
@@ -243,6 +244,7 @@ workflow GATKSVPipelinePhase1 {
       primary_contigs_fai = contigs,
       BAF_files = BAF_files,
       PE_files = PE_files,
+      PE_files_index = PE_files_index,
       SR_files = SR_files,
       SD_files = SD_files,
       sd_locs_vcf = sd_locs_vcf,
@@ -389,14 +391,23 @@ workflow GATKSVPipelinePhase1 {
     input:
       batch=batch,
       depth_vcf=ClusterBatch.clustered_depth_vcf,
+      depth_vcf_index=ClusterBatch.clustered_depth_vcf_index,
       melt_vcf=ClusterBatch.clustered_melt_vcf,
+      melt_vcf_index=ClusterBatch.clustered_melt_vcf_index,
       scramble_vcf=ClusterBatch.clustered_scramble_vcf,
+      scramble_vcf_index=ClusterBatch.clustered_scramble_vcf_index,
       wham_vcf=ClusterBatch.clustered_wham_vcf,
+      wham_vcf_index=ClusterBatch.clustered_wham_vcf_index,
       manta_vcf=ClusterBatch.clustered_manta_vcf,
+      manta_vcf_index=ClusterBatch.clustered_manta_vcf_index,
       baf_file=GatherBatchEvidence.merged_BAF,
+      baf_file_index=GatherBatchEvidence.merged_BAF_index,
       pe_file=GatherBatchEvidence.merged_PE,
+      pe_file_index=GatherBatchEvidence.merged_PE_index,
       rd_file=GatherBatchEvidence.merged_bincov,
+      rd_file_index=GatherBatchEvidence.merged_bincov_index,
       sr_file=GatherBatchEvidence.merged_SR,
+      sr_file_index=GatherBatchEvidence.merged_SR_index,
       median_file=GatherBatchEvidence.median_cov,
       reference_dict=reference_dict,
       chr_x=chr_x,
