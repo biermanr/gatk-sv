@@ -3,6 +3,7 @@ version 1.0
 import "GatherSampleEvidenceBatch.wdl" as sampleevidence
 import "EvidenceQC.wdl" as evidenceqc
 import "GATKSVPipelinePhase1.wdl" as phase1
+import "CollectCoverage.wdl" as cov
 import "GenotypeBatch.wdl" as genotypebatch
 import "RegenotypeCNVs.wdl" as regenocnvs
 import "MakeCohortVcf.wdl" as makecohortvcf
@@ -83,7 +84,13 @@ workflow GATKSVPipelineBatch {
 
     # gCNV
     File contig_ploidy_model_tar
+    File contig_ploidy_priors
     Array[File] gcnv_model_tars
+
+    # WGD/EvidenceQC coverage uses a separate 100 bp interval list.
+    File wgd_count_intervals
+    File wgd_scoring_mask
+    Boolean run_evidence_qc_wgd = true
 
     # PlotSVCountsPerSample metrics from ClusterBatch in GATKSVPipelinePhase1
     Int? N_IQR_cutoff_plotting
@@ -231,13 +238,31 @@ workflow GATKSVPipelineBatch {
   Array[File] generated_stripy_vcfs_ = select_all(select_first([StripyWorkflow.stripy_vcf, []]))
   Array[File]? stripy_vcfs_ = if use_stripy then (if defined(stripy_vcfs_input) then select_first([stripy_vcfs_input]) else generated_stripy_vcfs_) else NONE_ARRAY_
 
+  scatter (i in range(length(samples))) {
+    call cov.CollectCounts as CollectWGDCounts {
+      input:
+        intervals = wgd_count_intervals,
+        cram_or_bam = select_first([bam_or_cram_files])[i],
+        cram_or_bam_idx = if defined(bam_or_cram_indexes) then select_first([bam_or_cram_indexes])[i] else select_first([bam_or_cram_files])[i] + ".crai",
+        sample_id = samples[i],
+        ref_fasta = reference_fasta,
+        ref_fasta_fai = reference_index,
+        ref_fasta_dict = reference_dict,
+        gatk_docker = gatk_docker,
+        disabled_read_filters = ["MappingQualityReadFilter"]
+    }
+  }
+
   call evidenceqc.EvidenceQC as EvidenceQC {
     input:
       batch=name,
       samples=samples,
       genome_file=genome_file,
-      counts=counts_files_,
+      counts=CollectWGDCounts.counts,
+      run_vcf_qc = false,
+      wgd_scoring_mask = wgd_scoring_mask,
       run_ploidy = false,
+      run_wgd = run_evidence_qc_wgd,
       sv_pipeline_docker=sv_pipeline_docker,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       sv_base_mini_docker=sv_base_mini_docker,
@@ -257,6 +282,7 @@ workflow GATKSVPipelineBatch {
       chr_x=chr_x,
       chr_y=chr_y,
       contig_ploidy_model_tar=contig_ploidy_model_tar,
+      contig_ploidy_priors=contig_ploidy_priors,
       gcnv_model_tars=gcnv_model_tars,
       BAF_files=baf_files_input,
       counts=counts_files_,
@@ -492,6 +518,7 @@ workflow GATKSVPipelineBatch {
 
     # Additional outputs for creating a reference panel
     Array[File] counts = counts_files_
+    Array[File] wgd_counts = CollectWGDCounts.counts
     Array[File] PE_files = pe_files_
     Array[File] PE_files_index = pe_files_index_
     Array[File] SR_files = sr_files_
@@ -582,4 +609,3 @@ workflow GATKSVPipelineBatch {
     Array[File] complex_genotype_vcf_indexes = MakeCohortVcf.complex_genotype_vcfs
   }
 }
-

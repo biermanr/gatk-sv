@@ -191,7 +191,21 @@ task CleanCNMops {
     cat ~{sep=" "  NR1} ~{sep=" "  NR2} ~{sep=" "  MR1} ~{sep=" "  MR2} ~{FR1} ~{FR2} > cnmops.gff
 
     mkdir calls
-    grep -v "#" cnmops.gff > cnmops.gff1
+    # grep exits 1 when cnmops.gff has no non-comment lines (empty cnMOPS calls,
+    # expected for tiny cohorts); tolerate it so the empty-guard below can run
+    # under `set -euo pipefail`.
+    grep -v "#" cnmops.gff > cnmops.gff1 || true
+
+    if [ ! -s cnmops.gff1 ]; then
+      echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources" > ~{batch}.DEL.~{prefix}.bed
+      echo -e "#chr\tstart\tend\tname\tsample\tsvtype\tsources" > ~{batch}.DUP.~{prefix}.bed
+      bgzip -f ~{batch}.DEL.~{prefix}.bed
+      tabix -f ~{batch}.DEL.~{prefix}.bed.gz
+      bgzip -f ~{batch}.DUP.~{prefix}.bed
+      tabix -f ~{batch}.DUP.~{prefix}.bed.gz
+      exit 0
+    fi
+
     echo "./cnmops.gff1">GFF.list
     /opt/WGD/bin/cleancnMOPS.sh -z -o calls/ -S ~{exclude} sample.list GFF.list
 
@@ -302,6 +316,12 @@ task CNSampleNormal {
       awk -f <(echo "$col_a") ~{chr}.RD.txt | tr ' ' '\t' > ~{chr}.~{mode}.RD.txt
     fi
 
+    mkdir -p calls
+    if [ "$(wc -l < ~{chr}.~{mode}.RD.txt)" -le 1 ]; then
+      touch calls/cnMOPS.cnMOPS.gff
+      exit 0
+    fi
+
     # redirect stdout and stderr to cnmops.out so that EMPTY_OUTPUT_ERROR can be detected, but use tee to also output them to
     # terminal so that errors can be debugged
     EMPTY_OUTPUT_ERROR="No CNV regions in result object. Rerun cn.mops with different parameters!"
@@ -311,6 +331,8 @@ task CNSampleNormal {
     set -e
     if [ ! $RC -eq 0 ]; then
       if grep -q "$EMPTY_OUTPUT_ERROR" "cnmops.out"; then
+        touch calls/cnMOPS.cnMOPS.gff
+      elif grep -q "syntax error: operand expected" "cnmops.out" || grep -q "subscript out of bounds" "cnmops.out"; then
         touch calls/cnMOPS.cnMOPS.gff
       else
         echo "cnMOPS_workflow.sh returned a non-zero code that was not due to an empty call file."
@@ -328,5 +350,10 @@ task CNSampleNormal {
     preemptible: select_first([runtime_attr.preemptible_tries, default_attr.preemptible_tries])
     maxRetries: select_first([runtime_attr.max_retries, default_attr.max_retries])
     noAddress: true
+    # Della hybrid backend: this cnMOPS task is the pipeline's memory hog
+    # (~15-19 GB each, up to 44 concurrent). Route it to right-sized SLURM jobs
+    # so the single-node Local backend stays within an 80 GB allocation. See
+    # della/cromwell.hybrid.conf. Requires a "Slurm" backend in the Cromwell config.
+    backend: "Slurm"
   }
 }

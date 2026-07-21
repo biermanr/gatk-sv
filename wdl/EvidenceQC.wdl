@@ -46,6 +46,7 @@ workflow EvidenceQC {
     Int? disk_overhead_bincov_gb
 
     Boolean run_ploidy = true
+    Boolean run_wgd = run_ploidy
 
     Array[Float]? melt_insert_size
 
@@ -101,14 +102,16 @@ workflow EvidenceQC {
     }
   }
 
-  call wgd.WGD as WGD {
-    input:
-      batch = batch,
-      wgd_scoring_mask = wgd_scoring_mask,
-      bincov_matrix = MakeBincovMatrix.merged_bincov,
-      sv_pipeline_qc_docker = sv_pipeline_qc_docker,
-      runtime_attr_build = wgd_build_runtime_attr,
-      runtime_attr_score = wgd_score_runtime_attr
+  if (run_wgd) {
+    call wgd.WGD as WGD {
+      input:
+        batch = batch,
+        wgd_scoring_mask = wgd_scoring_mask,
+        bincov_matrix = MakeBincovMatrix.merged_bincov,
+        sv_pipeline_qc_docker = sv_pipeline_qc_docker,
+        runtime_attr_build = wgd_build_runtime_attr,
+        runtime_attr_score = wgd_score_runtime_attr
+    }
   }
 
   if (run_vcf_qc) {
@@ -248,9 +251,9 @@ workflow EvidenceQC {
     File? ploidy_matrix = Ploidy.ploidy_matrix
     File? ploidy_plots = if run_ploidy then select_first([CreateVariantCountPlots.ploidy_plots, Ploidy.ploidy_plots]) else NONE_FILE_
 
-    File WGD_dist = WGD.WGD_dist
-    File WGD_matrix = WGD.WGD_matrix
-    File WGD_scores = WGD.WGD_scores
+    File? WGD_dist = if run_wgd then WGD.WGD_dist else NONE_FILE_
+    File? WGD_matrix = if run_wgd then WGD.WGD_matrix else NONE_FILE_
+    File? WGD_scores = if run_wgd then WGD.WGD_scores else NONE_FILE_
 
     File bincov_matrix = MakeBincovMatrix.merged_bincov
     File bincov_matrix_index = MakeBincovMatrix.merged_bincov_idx
@@ -321,7 +324,7 @@ task MakeQcTable {
 
     File ploidy_plots
     File bincov_median
-    File WGD_scores
+    File? WGD_scores
     Array[Float] melt_insert_size
     Array[String] samples
 
@@ -369,7 +372,7 @@ task MakeQcTable {
       ~{"--estimated-copy-number-filename " + "./ploidy_est/estimated_copy_numbers.txt.gz"} \
       ~{"--sex-assignments-filename " + "./ploidy_est/sample_sex_assignments.txt.gz"} \
       ~{"--median-cov-filename " + bincov_median} \
-      ~{"--wgd-scores-filename " + WGD_scores} \
+      ~{if defined(WGD_scores) then "--wgd-scores-filename " + select_first([WGD_scores]) else ""} \
       ~{"--binwise-cnv-qvalues-filename " + "./ploidy_est/binwise_CNV_qValues.bed.gz"} \
       ~{"--dragen-qc-outlier-high-filename " + dragen_qc_high} \
       ~{"--manta-qc-outlier-high-filename " + manta_qc_high} \

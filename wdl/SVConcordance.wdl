@@ -119,6 +119,10 @@ task SVConcordanceTask {
     JVM_MAX_MEM=$(getJavaMem MemTotal)
     echo "JVM memory: $JVM_MAX_MEM"
 
+    # On non-GCS backends the co-located .tbi indexes are not localized with the
+    # VCFs (localization_optional); index them so GATK can read them.
+    [ -s ~{eval_vcf}.tbi ] || tabix -p vcf ~{eval_vcf}
+    [ -s ~{truth_vcf}.tbi ] || tabix -p vcf ~{truth_vcf}
     gatk --java-options "-Xmx${JVM_MAX_MEM}" SVConcordance \
       ~{"-L " + contig} \
       --sequence-dictionary ~{reference_dict} \

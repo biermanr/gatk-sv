@@ -18,6 +18,9 @@ workflow MakeCohortVcf {
     Boolean merge_complex_resolve_vcfs = false
     Boolean merge_complex_genotype_vcfs = false
 
+    # Run the final MainVcfQc (its Hardy-Weinberg plots fail for a single sample).
+    Boolean run_vcf_qc = true
+
     Array[File] pesr_vcfs
     Array[File] depth_vcfs
     Array[File] disc_files
@@ -377,6 +380,9 @@ workflow MakeCohortVcf {
       runtime_override_concat_cleaned_vcfs=runtime_override_concat_cleaned_vcfs
   }
 
+  # Gate the final VCF QC behind run_vcf_qc (was called unconditionally despite the
+  # flag). Its Hardy-Weinberg plots don't work for a single sample vs a reference panel.
+  if (run_vcf_qc) {
   call VcfQc.MainVcfQc {
     input:
       vcfs=[CleanVcf.cleaned_vcf],
@@ -416,12 +422,13 @@ workflow MakeCohortVcf {
       runtime_override_split_shuffled_list=runtime_override_split_shuffled_list,
       runtime_override_merge_and_tar_shard_benchmarks=runtime_override_merge_and_tar_shard_benchmarks
   }
+  }
 
 
   output {
     File vcf = CleanVcf.cleaned_vcf
     File vcf_index = CleanVcf.cleaned_vcf_index
-    File vcf_qc = MainVcfQc.sv_vcf_qc_output
+    File? vcf_qc = MainVcfQc.sv_vcf_qc_output
 
     # If merge_intermediate_vcfs enabled
     File? cluster_vcf = CombineBatches.combine_batches_merged_vcf

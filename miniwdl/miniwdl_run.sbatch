@@ -22,8 +22,15 @@
 # ---------------------------------------------------------------------------
 echo "[start] $(date) host=$(hostname) pwd=$(pwd)"
 
-MW="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-FORK="$(dirname "$MW")"
+# Hardcoded, not self-located via ${BASH_SOURCE[0]}: sbatch copies the submitted
+# script into /var/spool/slurmd/job<id>/ before executing it, so self-location
+# resolves to that spool path, not this file's real location -- breaks
+# MINIWDL_CFG/TMPDIR/logs/runs below with "Permission denied" (learned the hard
+# way). This whole recipe is already Della/host-specific everywhere else
+# (miniwdl.cfg, the input JSONs' CRAM/reference paths), so there's nothing
+# gained by trying to make just this one path dynamic.
+MW=/scratch/gpfs/AKEY/rbierman/gatk-sv/miniwdl
+FORK=/scratch/gpfs/AKEY/rbierman/gatk-sv
 
 # Default target: single-module bring-up (recommended first run). Override via args.
 WDL="${1:-$FORK/wdl/GatherSampleEvidence.wdl}"

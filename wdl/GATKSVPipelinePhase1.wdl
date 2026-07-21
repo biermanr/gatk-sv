@@ -55,6 +55,7 @@ workflow GATKSVPipelinePhase1 {
 
     # gCNV inputs
     File contig_ploidy_model_tar
+    File contig_ploidy_priors
     Array[File] gcnv_model_tars
 
     File? gatk4_jar_override
@@ -255,6 +256,7 @@ workflow GATKSVPipelinePhase1 {
       bincov_matrix = bincov_matrix,
       bincov_matrix_index = bincov_matrix_index,
       contig_ploidy_model_tar = contig_ploidy_model_tar,
+      contig_ploidy_priors = contig_ploidy_priors,
       gcnv_model_tars = gcnv_model_tars,
       gatk4_jar_override = gatk4_jar_override,
       gcnv_p_alt = gcnv_p_alt,
