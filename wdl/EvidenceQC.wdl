@@ -27,6 +27,11 @@ workflow EvidenceQC {
     # Coverage files
     Array[File] counts
 
+    # Optional second set of counts, collected over wgd_scoring_mask intervals, used only for
+    # WGD scoring. WGD needs bins matching the scoring mask, but bincov_matrix feeds RD evidence,
+    # MedianCov and cn.MOPS downstream, so it must stay on the genome-wide `counts` bins.
+    Array[File]? wgd_counts
+
     # SV tool calls
     Array[File]? dragen_vcfs       # Dragen VCF
     Array[File]? manta_vcfs        # Manta VCF
@@ -103,11 +108,24 @@ workflow EvidenceQC {
   }
 
   if (run_wgd) {
+    if (defined(wgd_counts)) {
+      call mbm.MakeBincovMatrix as MakeWgdBincovMatrix {
+        input:
+          samples = samples,
+          count_files = select_first([wgd_counts]),
+          batch = batch + ".wgd",
+          disk_overhead_gb = disk_overhead_bincov_gb,
+          sv_base_mini_docker = sv_base_mini_docker,
+          sv_base_docker = sv_base_docker,
+          runtime_attr_override = runtime_attr_bincov_attr
+      }
+    }
+
     call wgd.WGD as WGD {
       input:
         batch = batch,
         wgd_scoring_mask = wgd_scoring_mask,
-        bincov_matrix = MakeBincovMatrix.merged_bincov,
+        bincov_matrix = select_first([MakeWgdBincovMatrix.merged_bincov, MakeBincovMatrix.merged_bincov]),
         sv_pipeline_qc_docker = sv_pipeline_qc_docker,
         runtime_attr_build = wgd_build_runtime_attr,
         runtime_attr_score = wgd_score_runtime_attr
