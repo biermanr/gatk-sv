@@ -478,7 +478,9 @@ workflow GATKSVPipelinePhase1 {
     File? Matrix_QC_plot=GatherBatchEvidence.Matrix_QC_plot
 
     File merged_dels = GatherBatchEvidence.merged_dels
+    File merged_dels_index = GatherBatchEvidence.merged_dels_index
     File merged_dups = GatherBatchEvidence.merged_dups
+    File merged_dups_index = GatherBatchEvidence.merged_dups_index
 
     File? std_manta_vcf_tar = GatherBatchEvidence.std_manta_vcf_tar
     File? std_melt_vcf_tar = GatherBatchEvidence.std_melt_vcf_tar
@@ -520,6 +522,8 @@ workflow GATKSVPipelinePhase1 {
     File? filtered_scramble_vcf = FilterBatch.filtered_scramble_vcf
     File? filtered_depth_vcf = FilterBatch.filtered_depth_vcf
     File? filtered_pesr_vcf = FilterBatch.filtered_pesr_vcf
+    File? filtered_depth_vcf_index = FilterBatch.filtered_depth_vcf_index
+    File? filtered_pesr_vcf_index = FilterBatch.filtered_pesr_vcf_index
     File cutoffs = FilterBatch.cutoffs
     File scores = FilterBatch.scores
     File RF_intermediate_files = FilterBatch.RF_intermediate_files

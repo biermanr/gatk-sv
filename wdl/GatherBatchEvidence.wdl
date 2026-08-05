@@ -485,7 +485,9 @@ workflow GatherBatchEvidence {
     File? combined_ped_file = AddCaseSampleToPed.combined_ped_file
 
     File merged_dels = MergeDepth.del
+    File merged_dels_index = MergeDepth.del_index
     File merged_dups = MergeDepth.dup
+    File merged_dups_index = MergeDepth.dup_index
 
     File cnmops_del = CNMOPS.Del
     File cnmops_del_index = CNMOPS.Del_idx

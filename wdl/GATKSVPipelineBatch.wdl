@@ -320,10 +320,12 @@ workflow GATKSVPipelineBatch {
 
   Array[File] stripy_vcfs_for_annotation_ = select_all([GATKSVPipelinePhase1.merged_stripy_vcf])
   Array[File] merge_vcfs_ = select_all([GATKSVPipelinePhase1.filtered_pesr_vcf, GATKSVPipelinePhase1.filtered_depth_vcf])
+  # Same order as merge_vcfs_ so the two arrays stay aligned under select_all.
+  Array[File] merge_vcfs_idx_ = select_all([GATKSVPipelinePhase1.filtered_pesr_vcf_index, GATKSVPipelinePhase1.filtered_depth_vcf_index])
   call tasks_makecohortvcf.ConcatVcfs as MergePesrDepthVcfs {
     input:
     vcfs = merge_vcfs_,
-    vcfs_idx = [merge_vcfs_[0] + ".tbi", merge_vcfs_[1] + ".tbi"],
+    vcfs_idx = merge_vcfs_idx_,
     allow_overlaps = true,
     outfile_prefix = "~{name}.merge_pesr_depth",
     sv_base_mini_docker = sv_base_mini_docker
@@ -485,24 +487,32 @@ workflow GATKSVPipelineBatch {
       sv_pipeline_docker = sv_pipeline_docker
   }
 
+  # Prefer the real index outputs. The sibling-path convention (<file>.tbi) only holds
+  # for user-supplied inputs; for files we generated, each output lands in its own
+  # directory containing just that file, so the derived path does not exist. Fallbacks
+  # are String so an untaken branch never triggers a File existence check.
   scatter (i in range(length(samples))) {
-    File sr_files_index_ = sr_files_[i] + ".tbi"
+    String sr_files_sibling_index_ = sr_files_[i] + ".tbi"
   }
+  Array[File] sr_files_index_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_split_index])) else sr_files_sibling_index_
 
   if (defined(manta_vcfs_)) {
     scatter (i in range(length(samples))) {
-      File manta_vcfs_index_ = select_first([manta_vcfs_])[i] + ".tbi"
+      String manta_vcfs_sibling_index_ = select_first([manta_vcfs_])[i] + ".tbi"
     }
+    Array[File] manta_vcfs_index_ = if defined(manta_vcfs_input) then select_first([manta_vcfs_sibling_index_]) else select_all(select_first([GatherSampleEvidenceBatch.manta_index]))
   }
   if (defined(melt_vcfs_)) {
     scatter (i in range(length(samples))) {
-      File melt_vcfs_index_ = select_first([melt_vcfs_])[i] + ".tbi"
+      String melt_vcfs_sibling_index_ = select_first([melt_vcfs_])[i] + ".tbi"
     }
+    Array[File] melt_vcfs_index_ = if defined(melt_vcfs_input) then select_first([melt_vcfs_sibling_index_]) else select_all(select_first([GatherSampleEvidenceBatch.melt_index]))
   }
   if (defined(wham_vcfs_)) {
     scatter (i in range(length(samples))) {
-      File wham_vcfs_index_ = select_first([wham_vcfs_])[i] + ".tbi"
+      String wham_vcfs_sibling_index_ = select_first([wham_vcfs_])[i] + ".tbi"
     }
+    Array[File] wham_vcfs_index_ = if defined(wham_vcfs_input) then select_first([wham_vcfs_sibling_index_]) else select_all(select_first([GatherSampleEvidenceBatch.wham_index]))
   }
 
   output {
@@ -548,9 +558,9 @@ workflow GATKSVPipelineBatch {
     File merged_split_file_index = GATKSVPipelinePhase1.merged_SR_index
 
     File del_bed = GATKSVPipelinePhase1.merged_dels
-    File del_bed_index = GATKSVPipelinePhase1.merged_dels + ".tbi"
+    File del_bed_index = GATKSVPipelinePhase1.merged_dels_index
     File dup_bed = GATKSVPipelinePhase1.merged_dups
-    File dup_bed_index = GATKSVPipelinePhase1.merged_dups + ".tbi"
+    File dup_bed_index = GATKSVPipelinePhase1.merged_dups_index
 
     File? std_manta_vcf_tar = GATKSVPipelinePhase1.std_manta_vcf_tar
     File? std_melt_vcf_tar = GATKSVPipelinePhase1.std_melt_vcf_tar
