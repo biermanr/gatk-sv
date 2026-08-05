@@ -637,7 +637,7 @@
   "GATKSVPipelineBatch.noncoding_bed": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gcp-public-data--broad-references/hg38/v0/sv-resources/resources/v1/noncoding.sort.hg38.bed",
   "GATKSVPipelineBatch.outlier_cutoff_table": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/v1/module03_outlier_cutoff_table.tsv",
   "GATKSVPipelineBatch.par_bed": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gatk-sv-resources-public/hg38/v0/sv-resources/resources/v1/hg38.par.bed",
-  "GATKSVPipelineBatch.ped_file": "/scratch/gpfs/AKEY/rbierman/gatksv_miniwdl/inputs/1kgp_100samples.ped",
+  "GATKSVPipelineBatch.ped_file": "/scratch/gpfs/AKEY/rbierman/gatk-sv/miniwdl/inputs/1kgp_100samples.ped",
   "GATKSVPipelineBatch.primary_contigs_fai": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gcp-public-data--broad-references/hg38/v0/sv-resources/resources/v1/contig.fai",
   "GATKSVPipelineBatch.primary_contigs_list": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gcp-public-data--broad-references/hg38/v0/sv-resources/resources/v1/primary_contigs.list",
   "GATKSVPipelineBatch.protein_coding_gtf": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gatk-sv-resources-public/hg38/v0/sv-resources/resources/v1/gencode.v47.basic.protein_coding.canonical.gtf",
