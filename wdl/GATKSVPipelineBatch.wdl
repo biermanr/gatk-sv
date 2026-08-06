@@ -331,6 +331,21 @@ workflow GATKSVPipelineBatch {
     sv_base_mini_docker = sv_base_mini_docker
   }
 
+  # Sites-only twin of the above, for RegenotypeCNVs. Its add_batch_samples.py takes
+  # fields [:9] of each record and appends its own FORMAT column, so a sample-bearing
+  # input produces a duplicate FORMAT and one field more than the header. Cohort-mode
+  # MergeBatchSites emits sites-only for the same reason. bcftools view -G drops the
+  # genotype columns without touching variant IDs, which the downstream BED join needs.
+  call tasks_makecohortvcf.ConcatVcfs as MergePesrDepthSitesVcf {
+    input:
+    vcfs = merge_vcfs_,
+    vcfs_idx = merge_vcfs_idx_,
+    allow_overlaps = true,
+    sites_only = true,
+    outfile_prefix = "~{name}.merge_pesr_depth.sites",
+    sv_base_mini_docker = sv_base_mini_docker
+  }
+
   call tasks_cluster.CreatePloidyTableFromPed {
     input:
       ped_file = ped_file,
@@ -371,8 +386,8 @@ workflow GATKSVPipelineBatch {
       # cohort-mode MergeBatchSites, and the same VCF GenotypeBatch is given above.
       # RegenotypeCNVs joins it to batch_depth_vcfs by variant ID, so a sites VCF from
       # any other cohort (e.g. a reference panel) shares no IDs and fails the join.
-      merge_batch_sites_vcf=MergePesrDepthVcfs.concat_vcf,
-      merge_batch_sites_vcf_index=MergePesrDepthVcfs.concat_vcf_idx,
+      merge_batch_sites_vcf=MergePesrDepthSitesVcf.concat_vcf,
+      merge_batch_sites_vcf_index=MergePesrDepthSitesVcf.concat_vcf_idx,
       batch_depth_vcfs=[select_first([GATKSVPipelinePhase1.filtered_depth_vcf])],
       batches=[name],
       cohort=name,
