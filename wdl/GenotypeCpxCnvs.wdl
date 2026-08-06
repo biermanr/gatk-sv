@@ -13,6 +13,9 @@ workflow GenotypeCpxCnvs {
     File vcf
     Array[String] batches
     Array[File] coverage_files
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated files must supply this.
+    Array[File]? coverage_file_indexes
     Array[File] genotyping_rd_tables
     Array[File] ped_files
     Array[File] median_coverage_files
@@ -62,6 +65,7 @@ workflow GenotypeCpxCnvs {
         cpx_bed=GetCpxCnvIntervals.cpx_cnv_bed,
         batch=batches[i],
         coverage_file=coverage_files[i],
+        coverage_file_index=if defined(coverage_file_indexes) then select_first([coverage_file_indexes])[i] else coverage_files[i] + ".tbi",
         genotyping_rd_table=genotyping_rd_tables[i],
         ped_file=ped_files[i],
         median_file=median_coverage_files[i],

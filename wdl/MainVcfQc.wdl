@@ -11,7 +11,10 @@ import "Utils.wdl" as Utils
 # an SV VCF output by GATK-SV
 workflow MainVcfQc {
   input {
-    Array[File] vcfs  # Option to provide a single GATK-SV VCF or an array of position-sharded SV VCFs. Must be indexed
+    Array[File] vcfs  # Option to provide a single GATK-SV VCF or an array of position-sharded SV VCFs
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated VCFs must supply this.
+    Array[File]? vcf_indexes
     Boolean vcf_format_has_cn = true
     String? bcftools_preprocessing_options
     File? ped_file
@@ -91,6 +94,11 @@ workflow MainVcfQc {
   }
 
   Array[File] vcfs_for_qc = select_first([SubsetVcfBySamplesList.vcf_subset, vcfs])
+  # Track the matching indexes so CollectQcVcfWide need not derive them by appending
+  # ".tbi", which does not hold for VCFs this pipeline generated.
+  Array[File]? vcf_indexes_for_qc = if defined(SubsetVcfBySamplesList.vcf_subset_index)
+    then SubsetVcfBySamplesList.vcf_subset_index
+    else vcf_indexes
 
   # Scatter raw variant data collection per chromosome
   scatter ( contig in contigs ) {
@@ -98,6 +106,7 @@ workflow MainVcfQc {
     call vcfwideqc.CollectQcVcfWide {
       input:
         vcfs=vcfs_for_qc,
+        vcf_indexes=vcf_indexes_for_qc,
         contig=contig,
         sv_per_shard=sv_per_shard,
         bcftools_preprocessing_options=bcftools_preprocessing_options,

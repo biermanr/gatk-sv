@@ -29,6 +29,7 @@ workflow MakeCohortVcf {
     Array[File] disc_files
     Array[File]? disc_files_index
     Array[File] bincov_files
+    Array[File]? bincov_indexes
 
     Array[File] genotyping_rd_tables
     Array[File] median_coverage_files
@@ -308,6 +309,7 @@ workflow MakeCohortVcf {
       depth_vcfs=depth_vcfs,
       ped_file=ped_file,
       bincov_files=bincov_files,
+      bincov_indexes=bincov_indexes,
       genotyping_rd_tables=genotyping_rd_tables,
       median_coverage_files=median_coverage_files,
       bin_exclude=bin_exclude,
@@ -393,6 +395,7 @@ workflow MakeCohortVcf {
   call VcfQc.MainVcfQc {
     input:
       vcfs=[CleanVcf.cleaned_vcf],
+      vcf_indexes=[CleanVcf.cleaned_vcf_index],
       ped_file=ped_file,
       prefix="~{cohort_name}.cleaned",
       sv_per_shard=2500,

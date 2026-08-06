@@ -423,6 +423,7 @@ workflow GATKSVPipelineBatch {
       disc_files=[GATKSVPipelinePhase1.merged_PE],
       disc_files_index=[GATKSVPipelinePhase1.merged_PE_index],
       bincov_files=[GATKSVPipelinePhase1.merged_bincov],
+      bincov_indexes=[GATKSVPipelinePhase1.merged_bincov_index],
       cohort_name=name,
       rf_cutoff_files=[GATKSVPipelinePhase1.cutoffs],
       batches=[name],

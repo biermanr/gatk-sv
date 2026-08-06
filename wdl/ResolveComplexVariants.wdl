@@ -209,6 +209,7 @@ workflow ResolveComplexVariants {
   call Reshard.ReshardVcf {
     input:
       vcfs=RenameVariants.renamed_vcf,
+      vcf_indexes_input=RenameVariants.renamed_vcf_index,
       contig_list=contig_list,
       prefix="~{cohort_name}.reshard_vcf",
       sv_base_mini_docker=sv_base_mini_docker,

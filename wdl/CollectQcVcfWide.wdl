@@ -7,6 +7,9 @@ import "TasksMakeCohortVcf.wdl" as MiniTasks
 workflow CollectQcVcfWide {
   input {
     Array[File] vcfs
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated VCFs must supply this.
+    Array[File]? vcf_indexes
     String contig
     Int sv_per_shard
     String? bcftools_preprocessing_options
@@ -29,11 +32,12 @@ workflow CollectQcVcfWide {
   String output_prefix = "~{prefix}.collect_qc_vcf_wide"
 
   # Tabix each VCF to chromosome of interest, and shard input VCF for stats collection
-  scatter ( vcf in vcfs ) {
+  scatter ( i in range(length(vcfs)) ) {
+    File vcf = vcfs[i]
     call MiniTasks.ScatterVcf {
       input:
         vcf=vcf,
-        vcf_index=vcf + ".tbi",
+        vcf_index=if defined(vcf_indexes) then select_first([vcf_indexes])[i] else vcfs[i] + ".tbi",
         contig=contig,
         records_per_shard=sv_per_shard,
         prefix="~{output_prefix}.scatter_vcf",
