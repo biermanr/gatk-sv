@@ -97,7 +97,7 @@
       "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gatk-sv-resources-public/hg38/v0/sv-resources/resources/v1/1000G_Sudmant"
     ]
   ],
-  "GATKSVPipelineBatch.MakeCohortVcf.stratification_config_part1": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gatk-sv-resources-public/hg38/v0/sv-resources/resources/v1/clustering_config.part_one.tsv",
+  "GATKSVPipelineBatch.MakeCohortVcf.stratification_config_part1": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gatk-sv-resources-public/hg38/v0/sv-resources/resources/v1/stratify_config.part_one.tsv",
   "GATKSVPipelineBatch.MakeCohortVcf.stratification_config_part2": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gatk-sv-resources-public/hg38/v0/sv-resources/resources/v1/stratify_config.part_two.tsv",
   "GATKSVPipelineBatch.MakeCohortVcf.track_bed_files": [
     "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gatk-sv-resources-public/hg38/v0/sv-resources/resources/v1/hg38.SimpRep.sorted.pad_100.merged.bed",
