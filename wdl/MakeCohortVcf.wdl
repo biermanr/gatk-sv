@@ -22,6 +22,9 @@ workflow MakeCohortVcf {
     Boolean run_vcf_qc = true
 
     Array[File] pesr_vcfs
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated VCFs must supply this.
+    Array[File]? pesr_vcf_indexes
     Array[File] depth_vcfs
     Array[File] disc_files
     Array[File] bincov_files
@@ -209,6 +212,7 @@ workflow MakeCohortVcf {
       batches=batches,
       ped_file=ped_file,
       pesr_vcfs=pesr_vcfs,
+      pesr_vcf_indexes=pesr_vcf_indexes,
       depth_vcfs=depth_vcfs,
       contig_list=contig_list,
       min_sr_background_fail_batches=min_sr_background_fail_batches,

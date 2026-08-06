@@ -382,6 +382,7 @@ workflow GATKSVPipelineBatch {
   call regenocnvs.RegenotypeCNVs as RegenotypeCNVs {
     input:
       depth_vcfs=[GenotypeBatch.genotyped_depth_vcf],
+      depth_vcf_indexes=[GenotypeBatch.genotyped_depth_vcf_index],
       # This batch's own merged pesr+depth sites VCF -- the single-batch equivalent of
       # cohort-mode MergeBatchSites, and the same VCF GenotypeBatch is given above.
       # RegenotypeCNVs joins it to batch_depth_vcfs by variant ID, so a sites VCF from
@@ -410,6 +411,7 @@ workflow GATKSVPipelineBatch {
       merge_complex_genotype_vcfs = makecohortvcf_merge_complex_genotype_vcfs,
       ped_file=ped_file,
       pesr_vcfs=[GenotypeBatch.genotyped_pesr_vcf],
+      pesr_vcf_indexes=[GenotypeBatch.genotyped_pesr_vcf_index],
       depth_vcfs=RegenotypeCNVs.regenotyped_depth_vcfs,
       contig_list=primary_contigs_fai,
       allosome_fai=allosome_file,
@@ -437,6 +439,7 @@ workflow GATKSVPipelineBatch {
   call annotate.AnnotateVcf {
     input:
       vcf = MakeCohortVcf.vcf,
+      vcf_index = MakeCohortVcf.vcf_index,
       contig_list = primary_contigs_list,
       prefix = name,
       stripy_vcfs = stripy_vcfs_for_annotation_,

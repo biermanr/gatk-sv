@@ -15,6 +15,9 @@ workflow CombineBatches {
     Boolean merge_vcfs = false
 
     Array[File] pesr_vcfs
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated VCFs must supply this.
+    Array[File]? pesr_vcf_indexes
     Array[File] depth_vcfs
 
     File contig_list
@@ -62,7 +65,7 @@ workflow CombineBatches {
     call ExtractSRVariantLists as ExtractBatchSrVariantLists {
       input:
         vcf=pesr_vcfs[i],
-        vcf_index=pesr_vcfs[i] + ".tbi",
+        vcf_index=if defined(pesr_vcf_indexes) then select_first([pesr_vcf_indexes])[i] else pesr_vcfs[i] + ".tbi",
         output_prefix="~{cohort_name}.batch_~{i}",
         sv_base_mini_docker=sv_base_mini_docker,
         runtime_attr_override=runtime_attr_extract_vids_1

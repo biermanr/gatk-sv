@@ -8,7 +8,10 @@ import "Utils.wdl" as utils
 workflow AnnotateVcf {
 
   input {
-    File vcf  # GATK-SV VCF for annotation. Index .tbi must be located at the same path
+    File vcf  # GATK-SV VCF for annotation
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing a generated VCF must supply this.
+    File? vcf_index
     File contig_list  # Ordered list of contigs to annotate that are present in the input VCF
     String prefix
 
@@ -59,7 +62,7 @@ workflow AnnotateVcf {
     call sharded_annotate_vcf.ShardedAnnotateVcf {
       input:
         vcf = vcf,
-        vcf_idx = vcf + ".tbi",
+        vcf_idx = select_first([vcf_index, vcf + ".tbi"]),
         contig = contig,
         prefix = prefix,
         protein_coding_gtf = protein_coding_gtf,
