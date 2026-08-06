@@ -18,6 +18,7 @@ workflow ResolveComplexVariants {
     Array[File] cluster_background_fail_lists
 
     Array[File] disc_files
+    Array[File]? disc_files_index
     Array[File] rf_cutoff_files
 
     File contig_list
@@ -89,6 +90,8 @@ workflow ResolveComplexVariants {
     call ResolveComplexContig.ResolveComplexSv as ResolveCpxInv {
       input:
         vcf=SubsetInversions.filtered_vcf,
+        vcf_index=SubsetInversions.filtered_vcf_idx,
+        disc_files_index=disc_files_index,
         prefix="~{cohort_name}.~{contig}.inv_only",
         variant_prefix="~{cohort_name}_inv_",
         contig=contig,
@@ -131,6 +134,8 @@ workflow ResolveComplexVariants {
     call ResolveComplexContig.ResolveComplexSv as ResolveCpxAll {
       input:
         vcf=BreakpointOverlap.out,
+        vcf_index=BreakpointOverlap.out_index,
+        disc_files_index=disc_files_index,
         prefix="~{cohort_name}.~{contig}.all",
         variant_prefix="~{cohort_name}_all_",
         contig=contig,

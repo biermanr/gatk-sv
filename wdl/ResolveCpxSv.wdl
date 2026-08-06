@@ -8,6 +8,9 @@ import "TasksMakeCohortVcf.wdl" as MiniTasks
 workflow ResolveComplexSv {
   input {
     File vcf
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated files must supply these.
+    File? vcf_index
     String prefix
     String variant_prefix
     String contig
@@ -15,6 +18,7 @@ workflow ResolveComplexSv {
     File cytobands
     File mei_bed
     Array[File] disc_files
+    Array[File]? disc_files_index
     Array[File] rf_cutoff_files
     File pe_exclude_list
     File ref_dict
@@ -39,12 +43,14 @@ workflow ResolveComplexSv {
     RuntimeAttr? runtime_override_fix_header
   }
 
-  File vcf_idx = vcf + ".tbi"
+  File vcf_idx = select_first([vcf_index, vcf + ".tbi"])
+  # pe_exclude_list and cytobands are user-supplied resources whose .tbi does sit alongside.
   File pe_exclude_list_idx = pe_exclude_list + ".tbi"
   File cytobands_idx = cytobands + ".tbi"
   scatter (i in range(length(disc_files))) {
-    File disc_files_idx = disc_files[i] + ".tbi"
+    String disc_files_sibling_idx_ = disc_files[i] + ".tbi"
   }
+  Array[File] disc_files_idx = select_first([disc_files_index, disc_files_sibling_idx_])
 
   #Shard vcf for complex resolution
   call ShardVcfCpx {

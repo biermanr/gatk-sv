@@ -27,6 +27,7 @@ workflow MakeCohortVcf {
     Array[File]? pesr_vcf_indexes
     Array[File] depth_vcfs
     Array[File] disc_files
+    Array[File]? disc_files_index
     Array[File] bincov_files
 
     Array[File] genotyping_rd_tables
@@ -254,6 +255,7 @@ workflow MakeCohortVcf {
       cluster_bothside_pass_lists=CombineBatches.cluster_bothside_pass_lists,
       cluster_background_fail_lists=CombineBatches.cluster_background_fail_lists,
       disc_files=disc_files,
+      disc_files_index=disc_files_index,
       rf_cutoff_files=rf_cutoff_files,
       contig_list=contig_list,
       cytobands=cytobands,
