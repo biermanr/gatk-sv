@@ -110,7 +110,6 @@
     "RM"
   ],
   "GATKSVPipelineBatch.N_IQR_cutoff_plotting": 6,
-  "GATKSVPipelineBatch.RegenotypeCNVs.merge_batch_sites_vcf": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gatk-sv-ref-panel-1kg-v1-1/mw-gatk-genotype/all_batches.merge_batch_sites.vcf.gz",
   "GATKSVPipelineBatch.RegenotypeCNVs.n_RdTest_bins": 100000,
   "GATKSVPipelineBatch.RegenotypeCNVs.n_per_split": 5000,
   "GATKSVPipelineBatch.allosome_file": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gcp-public-data--broad-references/hg38/v0/sv-resources/resources/v1/allosome.fai",

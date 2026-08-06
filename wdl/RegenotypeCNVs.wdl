@@ -11,6 +11,9 @@ workflow RegenotypeCNVs {
     String sv_pipeline_docker
     Array[File] depth_vcfs
     File merge_batch_sites_vcf
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing a generated VCF must supply this.
+    File? merge_batch_sites_vcf_index
     Array[File] batch_depth_vcfs
     Array[File] coveragefiles
     Array[File] coveragefile_idxs
@@ -63,7 +66,7 @@ workflow RegenotypeCNVs {
   call ExtractDepthVcf {
     input:
       vcf = merge_batch_sites_vcf,
-      vcf_index = merge_batch_sites_vcf + ".tbi",
+      vcf_index = select_first([merge_batch_sites_vcf_index, merge_batch_sites_vcf + ".tbi"]),
       prefix = "~{cohort}.cohort_depth",
       sv_base_mini_docker = sv_base_mini_docker,
       runtime_attr_override = runtime_attr_extract_depth_vcf

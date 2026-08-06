@@ -367,6 +367,12 @@ workflow GATKSVPipelineBatch {
   call regenocnvs.RegenotypeCNVs as RegenotypeCNVs {
     input:
       depth_vcfs=[GenotypeBatch.genotyped_depth_vcf],
+      # This batch's own merged pesr+depth sites VCF -- the single-batch equivalent of
+      # cohort-mode MergeBatchSites, and the same VCF GenotypeBatch is given above.
+      # RegenotypeCNVs joins it to batch_depth_vcfs by variant ID, so a sites VCF from
+      # any other cohort (e.g. a reference panel) shares no IDs and fails the join.
+      merge_batch_sites_vcf=MergePesrDepthVcfs.concat_vcf,
+      merge_batch_sites_vcf_index=MergePesrDepthVcfs.concat_vcf_idx,
       batch_depth_vcfs=[select_first([GATKSVPipelinePhase1.filtered_depth_vcf])],
       batches=[name],
       cohort=name,
