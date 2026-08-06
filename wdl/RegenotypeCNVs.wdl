@@ -186,6 +186,7 @@ workflow RegenotypeCNVs {
       call g2.Regenotype as Genotype_2 {
         input:
           depth_vcf=depth_vcfs[i],
+          depth_vcf_index=depth_vcf_indexes_[i],
           regeno_bed= MergeList.master_regeno,
           cohort_depth_vcf=ExtractDepthVcf.out,
           batch_depth_vcf=batch_depth_vcfs[i],

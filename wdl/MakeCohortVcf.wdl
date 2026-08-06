@@ -250,6 +250,7 @@ workflow MakeCohortVcf {
       cohort_name=cohort_name,
       merge_vcfs=merge_complex_resolve_vcfs,
       cluster_vcfs=CombineBatches.combined_vcfs,
+      cluster_vcf_indexes=CombineBatches.combined_vcf_indexes,
       cluster_bothside_pass_lists=CombineBatches.cluster_bothside_pass_lists,
       cluster_background_fail_lists=CombineBatches.cluster_background_fail_lists,
       disc_files=disc_files,
