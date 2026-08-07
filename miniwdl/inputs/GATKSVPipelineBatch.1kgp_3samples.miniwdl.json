@@ -475,5 +475,6 @@
   "GATKSVPipelineBatch.wham_docker": "us.gcr.io/broad-dsde-methods/gatk-sv/wham:2024-10-25-v0.29-beta-5ea22a52",
   "GATKSVPipelineBatch.contig_ploidy_priors": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/1kgp_3samples/Data/offline_resources/gs/gatk-sv-resources-public/hg38/v0/sv-resources/ref-panel/1KG/v2/gcnv/ref_panel_1kg_v2-contig-ploidy-model.fixed/contig_ploidy_prior.tsv",
   "GATKSVPipelineBatch.wgd_count_intervals": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/1kgp_3samples/Data/gcnv_model_intervals/wgd_scoring_mask.hg38.gnomad_v3.interval_list",
-  "GATKSVPipelineBatch.wgd_scoring_mask": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gcp-public-data--broad-references/hg38/v0/sv-resources/resources/v1/wgd_scoring_mask.hg38.gnomad_v3.bed"
+  "GATKSVPipelineBatch.wgd_scoring_mask": "/projects/AKEY/akey_vol2/huixinx/Projects/03.broad_wgs/Analysis/SV/gatk-sv/Test/NA12878/Data/offline_resources/gs/gcp-public-data--broad-references/hg38/v0/sv-resources/resources/v1/wgd_scoring_mask.hg38.gnomad_v3.bed",
+  "GATKSVPipelineBatch.MakeCohortVcf.run_vcf_qc": false
 }
