@@ -24,6 +24,7 @@
 version 1.0
 
 import "GermlineCNVTasks.wdl" as CNVTasks
+import "GermlineCNVCohort.wdl" as CNVCohort
 
 workflow CNVGermlineCaseWorkflow {
 
@@ -34,6 +35,7 @@ workflow CNVGermlineCaseWorkflow {
       Array[File] counts
       Array[String] count_entity_ids
       File contig_ploidy_model_tar
+      File contig_ploidy_priors
       Array[File] gcnv_model_tars
       String gatk_docker
       String linux_docker
@@ -101,23 +103,42 @@ workflow CNVGermlineCaseWorkflow {
       RuntimeAttr? runtime_attr_explode
     }
 
-    call DetermineGermlineContigPloidyCaseMode {
-        input:
-            read_count_files = counts,
-            contig_ploidy_model_tar = contig_ploidy_model_tar,
-            gatk4_jar_override = gatk4_jar_override,
-            gatk_docker = gatk_docker,
-            mapping_error_rate = ploidy_mapping_error_rate,
-            sample_psi_scale = ploidy_sample_psi_scale,
-            runtime_attr_override = runtime_attr_ploidy
+    # Ploidy: cohort mode (with priors) requires >=2 samples (GATK enforces this).
+    # For a single sample, fall back to case mode with the pretrained contig-ploidy
+    # model, which is the stock GATK-SV behavior.
+    if (length(count_entity_ids) >= 2) {
+        call CNVCohort.DetermineGermlineContigPloidyCohortMode as DetermineGermlineContigPloidyCohortMode {
+            input:
+                cohort_entity_id = "case",
+                read_count_files = counts,
+                contig_ploidy_priors = contig_ploidy_priors,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                mapping_error_rate = ploidy_mapping_error_rate,
+                sample_psi_scale = ploidy_sample_psi_scale,
+                runtime_attr_override = runtime_attr_ploidy
+        }
     }
+    if (length(count_entity_ids) < 2) {
+        call DetermineGermlineContigPloidyCaseMode {
+            input:
+                read_count_files = counts,
+                contig_ploidy_model_tar = contig_ploidy_model_tar,
+                gatk4_jar_override = gatk4_jar_override,
+                gatk_docker = gatk_docker,
+                mapping_error_rate = ploidy_mapping_error_rate,
+                sample_psi_scale = ploidy_sample_psi_scale,
+                runtime_attr_override = runtime_attr_ploidy
+        }
+    }
+    File contig_ploidy_calls_tar_ = select_first([DetermineGermlineContigPloidyCohortMode.contig_ploidy_calls_tar, DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar])
 
     scatter (scatter_index in range(length(gcnv_model_tars))) {
         call GermlineCNVCallerCaseMode {
             input:
                 scatter_index = scatter_index,
                 read_count_files = counts,
-                contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
+                contig_ploidy_calls_tar = contig_ploidy_calls_tar_,
                 gcnv_model_tar = gcnv_model_tars[scatter_index],
                 gatk4_jar_override = gatk4_jar_override,
                 gatk_docker = gatk_docker,
@@ -165,7 +186,7 @@ workflow CNVGermlineCaseWorkflow {
                 denoising_configs = GermlineCNVCallerCaseMode.denoising_config_json,
                 gcnvkernel_version = GermlineCNVCallerCaseMode.gcnvkernel_version_json,
                 sharded_interval_lists = GermlineCNVCallerCaseMode.sharded_interval_list,
-                contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
+                contig_ploidy_calls_tar = contig_ploidy_calls_tar_,
                 allosomal_contigs = allosomal_contigs,
                 ref_copy_number_autosomal_contigs = ref_copy_number_autosomal_contigs,
                 sample_index = sample_index,
@@ -177,14 +198,14 @@ workflow CNVGermlineCaseWorkflow {
 
     call CNVTasks.ExplodePloidyCalls {
         input :
-            contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar,
+            contig_ploidy_calls_tar = contig_ploidy_calls_tar_,
             samples = count_entity_ids,
             linux_docker = linux_docker,
             runtime_attr_override = runtime_attr_explode
     }
 
     output {
-        File contig_ploidy_calls_tar = DetermineGermlineContigPloidyCaseMode.contig_ploidy_calls_tar
+        File contig_ploidy_calls_tar = contig_ploidy_calls_tar_
         Array[File] sample_contig_ploidy_calls_tars = ExplodePloidyCalls.sample_contig_ploidy_calls_tar
         Array[Array[File]] gcnv_calls_tars = GermlineCNVCallerCaseMode.gcnv_call_tars
         Array[File] gcnv_tracking_tars = GermlineCNVCallerCaseMode.gcnv_tracking_tar

@@ -48,6 +48,7 @@ workflow GatherBatchEvidence {
     Boolean rename_samples = false  # Rename samples in PE/SR/BAF to IDs in the "samples" array (always done for RD)
     Array[File?]? BAF_files         # Required for MatrixQC
     Array[File] PE_files
+    Array[File] PE_files_index
     Array[File]? ref_panel_PE_files
     Array[File] SR_files
     Array[File]? ref_panel_SR_files
@@ -61,6 +62,7 @@ workflow GatherBatchEvidence {
 
     # gCNV inputs
     File contig_ploidy_model_tar
+    File contig_ploidy_priors
     Array[File] gcnv_model_tars
 
     File? gatk4_jar_override
@@ -325,6 +327,7 @@ workflow GatherBatchEvidence {
       counts = CondenseReadCounts.out,
       count_entity_ids = samples,
       contig_ploidy_model_tar = contig_ploidy_model_tar,
+      contig_ploidy_priors = contig_ploidy_priors,
       gcnv_model_tars = gcnv_model_tars,
       gatk_docker = select_first([gcnv_gatk_docker, gatk_docker]),
       linux_docker = linux_docker,
@@ -415,6 +418,7 @@ workflow GatherBatchEvidence {
           vcf_tar = select_first([PreprocessPESR.std_dragen_vcf_tar, PreprocessPESR.std_manta_vcf_tar]),
           cytoband=cytoband,
           discfile=PE_files,
+          discfile_idx=PE_files_index,
           mei_bed=mei_bed,
           sv_pipeline_docker = sv_pipeline_docker,
           linux_docker = linux_docker,
@@ -481,7 +485,9 @@ workflow GatherBatchEvidence {
     File? combined_ped_file = AddCaseSampleToPed.combined_ped_file
 
     File merged_dels = MergeDepth.del
+    File merged_dels_index = MergeDepth.del_index
     File merged_dups = MergeDepth.dup
+    File merged_dups_index = MergeDepth.dup_index
 
     File cnmops_del = CNMOPS.Del
     File cnmops_del_index = CNMOPS.Del_idx

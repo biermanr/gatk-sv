@@ -149,6 +149,10 @@ svtypes <- unique(as.character(dat$svtype))
 
 
 ###Get list of outlier samples & write to outfile
+###Note: if svtypes is empty (e.g. an svcounts.txt with zero SV records,
+###which can legitimately happen for a small batch/algorithm combination),
+###do.call("rbind", list()) returns NULL rather than a 0-row data.frame, so
+###that case is handled explicitly instead of crashing on colnames<-(NULL, ...).
 outliers.df <- do.call("rbind", lapply(svtypes,function(svtype){
   out.samples <- getOutliers(dat=dat,svtype=svtype,n.iqr=n.iqr,minPerSVTYPE=minPerSVTYPE)
   out.df <- data.frame("sample"=out.samples,
@@ -156,6 +160,9 @@ outliers.df <- do.call("rbind", lapply(svtypes,function(svtype){
                                     times=length(out.samples)))
   return(out.df)
 }))
+if(is.null(outliers.df)){
+  outliers.df <- data.frame("sample"=character(0),"reason"=character(0))
+}
 colnames(outliers.df) <- c("#sample","reason")
 write.table(outliers.df,paste(OUTDIR,"/",prefix,".SV_count_outlier_samples.txt",sep=""),
             col.names=T,row.names=F,quote=F,sep="\t")
@@ -170,11 +177,16 @@ if(plot==T){
     dev.off()
   })
   png(paste(OUTDIR,"/",prefix,".all_SVTYPEs.counts_per_sample.png",sep=""),
-      height=1000,width=700*length(svtypes),res=400)
-  par(mfrow=c(1,length(svtypes)))
-  sapply(svtypes,function(svtype){
-    plotOutliers(dat=dat,svtype=svtype,n.iqr=n.iqr,minPerSVTYPE=minPerSVTYPE)
-  })
+      height=1000,width=max(700,700*length(svtypes)),res=400)
+  if(length(svtypes)==0){
+    plot.new()
+    text(0.5,0.5,"No SVs found for this algorithm")
+  }else{
+    par(mfrow=c(1,length(svtypes)))
+    sapply(svtypes,function(svtype){
+      plotOutliers(dat=dat,svtype=svtype,n.iqr=n.iqr,minPerSVTYPE=minPerSVTYPE)
+    })
+  }
   dev.off()
 }
 

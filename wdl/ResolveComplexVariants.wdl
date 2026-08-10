@@ -11,10 +11,14 @@ workflow ResolveComplexVariants {
     Boolean merge_vcfs = false
 
     Array[File] cluster_vcfs
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated VCFs must supply this.
+    Array[File]? cluster_vcf_indexes
     Array[File] cluster_bothside_pass_lists
     Array[File] cluster_background_fail_lists
 
     Array[File] disc_files
+    Array[File]? disc_files_index
     Array[File] rf_cutoff_files
 
     File contig_list
@@ -75,7 +79,7 @@ workflow ResolveComplexVariants {
     call MiniTasks.FilterVcf as SubsetInversions {
       input:
         vcf=cluster_vcfs[i],
-        vcf_index=cluster_vcfs[i] + ".tbi",
+        vcf_index=if defined(cluster_vcf_indexes) then select_first([cluster_vcf_indexes])[i] else cluster_vcfs[i] + ".tbi",
         outfile_prefix="~{cohort_name}.~{contig}.inversions_only",
         records_filter='INFO/SVTYPE="INV"',
         sv_base_mini_docker=sv_base_mini_docker,
@@ -86,6 +90,8 @@ workflow ResolveComplexVariants {
     call ResolveComplexContig.ResolveComplexSv as ResolveCpxInv {
       input:
         vcf=SubsetInversions.filtered_vcf,
+        vcf_index=SubsetInversions.filtered_vcf_idx,
+        disc_files_index=disc_files_index,
         prefix="~{cohort_name}.~{contig}.inv_only",
         variant_prefix="~{cohort_name}_inv_",
         contig=contig,
@@ -116,7 +122,7 @@ workflow ResolveComplexVariants {
     call BreakpointOverlap {
       input:
         vcf=cluster_vcfs[i],
-        vcf_index=cluster_vcfs[i] + ".tbi",
+        vcf_index=if defined(cluster_vcf_indexes) then select_first([cluster_vcf_indexes])[i] else cluster_vcfs[i] + ".tbi",
         prefix="~{cohort_name}.~{contig}.breakpoint_overlap",
         bothside_pass_list=cluster_bothside_pass_lists[i],
         background_fail_list=cluster_background_fail_lists[i],
@@ -128,6 +134,8 @@ workflow ResolveComplexVariants {
     call ResolveComplexContig.ResolveComplexSv as ResolveCpxAll {
       input:
         vcf=BreakpointOverlap.out,
+        vcf_index=BreakpointOverlap.out_index,
+        disc_files_index=disc_files_index,
         prefix="~{cohort_name}.~{contig}.all",
         variant_prefix="~{cohort_name}_all_",
         contig=contig,
@@ -201,6 +209,7 @@ workflow ResolveComplexVariants {
   call Reshard.ReshardVcf {
     input:
       vcfs=RenameVariants.renamed_vcf,
+      vcf_indexes_input=RenameVariants.renamed_vcf_index,
       contig_list=contig_list,
       prefix="~{cohort_name}.reshard_vcf",
       sv_base_mini_docker=sv_base_mini_docker,

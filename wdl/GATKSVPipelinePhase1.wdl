@@ -45,6 +45,7 @@ workflow GATKSVPipelinePhase1 {
     # Supply either BAF_files or (SD_files and sd_locs_vcf)
     Array[File?]? BAF_files
     Array[File] PE_files
+    Array[File] PE_files_index
     Array[File] SR_files
     Array[File]? SD_files
     File? sd_locs_vcf
@@ -54,6 +55,7 @@ workflow GATKSVPipelinePhase1 {
 
     # gCNV inputs
     File contig_ploidy_model_tar
+    File contig_ploidy_priors
     Array[File] gcnv_model_tars
 
     File? gatk4_jar_override
@@ -243,6 +245,7 @@ workflow GATKSVPipelinePhase1 {
       primary_contigs_fai = contigs,
       BAF_files = BAF_files,
       PE_files = PE_files,
+      PE_files_index = PE_files_index,
       SR_files = SR_files,
       SD_files = SD_files,
       sd_locs_vcf = sd_locs_vcf,
@@ -253,6 +256,7 @@ workflow GATKSVPipelinePhase1 {
       bincov_matrix = bincov_matrix,
       bincov_matrix_index = bincov_matrix_index,
       contig_ploidy_model_tar = contig_ploidy_model_tar,
+      contig_ploidy_priors = contig_ploidy_priors,
       gcnv_model_tars = gcnv_model_tars,
       gatk4_jar_override = gatk4_jar_override,
       gcnv_p_alt = gcnv_p_alt,
@@ -389,14 +393,23 @@ workflow GATKSVPipelinePhase1 {
     input:
       batch=batch,
       depth_vcf=ClusterBatch.clustered_depth_vcf,
+      depth_vcf_index=ClusterBatch.clustered_depth_vcf_index,
       melt_vcf=ClusterBatch.clustered_melt_vcf,
+      melt_vcf_index=ClusterBatch.clustered_melt_vcf_index,
       scramble_vcf=ClusterBatch.clustered_scramble_vcf,
+      scramble_vcf_index=ClusterBatch.clustered_scramble_vcf_index,
       wham_vcf=ClusterBatch.clustered_wham_vcf,
+      wham_vcf_index=ClusterBatch.clustered_wham_vcf_index,
       manta_vcf=ClusterBatch.clustered_manta_vcf,
+      manta_vcf_index=ClusterBatch.clustered_manta_vcf_index,
       baf_file=GatherBatchEvidence.merged_BAF,
+      baf_file_index=GatherBatchEvidence.merged_BAF_index,
       pe_file=GatherBatchEvidence.merged_PE,
+      pe_file_index=GatherBatchEvidence.merged_PE_index,
       rd_file=GatherBatchEvidence.merged_bincov,
+      rd_file_index=GatherBatchEvidence.merged_bincov_index,
       sr_file=GatherBatchEvidence.merged_SR,
+      sr_file_index=GatherBatchEvidence.merged_SR_index,
       median_file=GatherBatchEvidence.median_cov,
       reference_dict=reference_dict,
       chr_x=chr_x,
@@ -465,7 +478,9 @@ workflow GATKSVPipelinePhase1 {
     File? Matrix_QC_plot=GatherBatchEvidence.Matrix_QC_plot
 
     File merged_dels = GatherBatchEvidence.merged_dels
+    File merged_dels_index = GatherBatchEvidence.merged_dels_index
     File merged_dups = GatherBatchEvidence.merged_dups
+    File merged_dups_index = GatherBatchEvidence.merged_dups_index
 
     File? std_manta_vcf_tar = GatherBatchEvidence.std_manta_vcf_tar
     File? std_melt_vcf_tar = GatherBatchEvidence.std_melt_vcf_tar
@@ -507,6 +522,8 @@ workflow GATKSVPipelinePhase1 {
     File? filtered_scramble_vcf = FilterBatch.filtered_scramble_vcf
     File? filtered_depth_vcf = FilterBatch.filtered_depth_vcf
     File? filtered_pesr_vcf = FilterBatch.filtered_pesr_vcf
+    File? filtered_depth_vcf_index = FilterBatch.filtered_depth_vcf_index
+    File? filtered_pesr_vcf_index = FilterBatch.filtered_pesr_vcf_index
     File cutoffs = FilterBatch.cutoffs
     File scores = FilterBatch.scores
     File RF_intermediate_files = FilterBatch.RF_intermediate_files

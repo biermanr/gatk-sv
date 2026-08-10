@@ -4,6 +4,9 @@ import "TasksGenotypeBatch.wdl" as tasksgenotypebatch
 workflow Regenotype {
   input {
     File depth_vcf
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing a generated VCF must supply this.
+    File? depth_vcf_index
     File regeno_bed
     File cohort_depth_vcf
     File batch_depth_vcf
@@ -97,7 +100,7 @@ workflow Regenotype {
     input:
       batch=batch,
       depth_vcf=depth_vcf,
-      depth_vcf_index=depth_vcf + ".tbi",
+      depth_vcf_index=select_first([depth_vcf_index, depth_vcf + ".tbi"]),
       regeno_vcfs=AddGenotypesRegeno.genotyped_vcf,
       regeno_vcf_indexes=AddGenotypesRegeno.genotyped_vcf_index,
       bed=regeno_bed,

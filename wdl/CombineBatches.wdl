@@ -15,6 +15,9 @@ workflow CombineBatches {
     Boolean merge_vcfs = false
 
     Array[File] pesr_vcfs
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated VCFs must supply this.
+    Array[File]? pesr_vcf_indexes
     Array[File] depth_vcfs
 
     File contig_list
@@ -62,7 +65,7 @@ workflow CombineBatches {
     call ExtractSRVariantLists as ExtractBatchSrVariantLists {
       input:
         vcf=pesr_vcfs[i],
-        vcf_index=pesr_vcfs[i] + ".tbi",
+        vcf_index=if defined(pesr_vcf_indexes) then select_first([pesr_vcf_indexes])[i] else pesr_vcfs[i] + ".tbi",
         output_prefix="~{cohort_name}.batch_~{i}",
         sv_base_mini_docker=sv_base_mini_docker,
         runtime_attr_override=runtime_attr_extract_vids_1
@@ -368,6 +371,9 @@ task GroupedSVClusterTask {
     JVM_MAX_MEM=$(getJavaMem MemTotal)
     echo "JVM memory: $JVM_MAX_MEM"
 
+    # On non-GCS backends the co-located .tbi is not localized with the VCF
+    # (localization_optional); index it so GATK can read the block-compressed VCF.
+    [ -s ~{vcf}.tbi ] || tabix -p vcf ~{vcf}
     gatk --java-options "-Xmx${JVM_MAX_MEM}" GroupedSVCluster \
       ~{"-L " + contig} \
       --reference ~{reference_fasta} \

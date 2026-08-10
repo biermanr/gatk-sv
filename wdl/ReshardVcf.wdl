@@ -8,6 +8,9 @@ import "TasksMakeCohortVcf.wdl" as MiniTasks
 workflow ReshardVcf {
   input {
     Array[File] vcfs  # Order does not matter but must be sorted and indexed
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated VCFs must supply this.
+    Array[File]? vcf_indexes_input
     File contig_list
     String prefix
     Boolean? use_ssd
@@ -18,8 +21,9 @@ workflow ReshardVcf {
   Array[String] contigs = transpose(read_tsv(contig_list))[0]
 
   scatter (i in range(length(vcfs))) {
-    File vcf_indexes = vcfs[i] + ".tbi"
+    String vcf_sibling_indexes_ = vcfs[i] + ".tbi"
   }
+  Array[File] vcf_indexes = select_first([vcf_indexes_input, vcf_sibling_indexes_])
 
   scatter (contig in contigs) {
     call ReshardContig {

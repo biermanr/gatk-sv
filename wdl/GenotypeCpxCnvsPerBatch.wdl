@@ -20,6 +20,9 @@ workflow GenotypeCpxCnvsPerBatch {
     File median_file
     File ped_file
     File coverage_file
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing a generated file must supply this.
+    File? coverage_file_index
     File ref_dict
 
     String linux_docker
@@ -35,7 +38,7 @@ workflow GenotypeCpxCnvsPerBatch {
     RuntimeAttr? runtime_override_concat_melted_genotypes
   }
 
-  File coverage_file_idx = coverage_file + ".tbi"
+  File coverage_file_idx = select_first([coverage_file_index, coverage_file + ".tbi"])
 
   call Utils.GetSampleIdsFromMedianCoverageFile {
     input:

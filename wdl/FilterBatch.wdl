@@ -134,6 +134,10 @@ workflow FilterBatch {
     File? filtered_scramble_vcf = FilterBatchSamples.outlier_filtered_scramble_vcf
     File? filtered_wham_vcf = FilterBatchSamples.outlier_filtered_wham_vcf
     File? filtered_pesr_vcf = FilterBatchSamples.outlier_filtered_pesr_vcf
+    # Propagate indexes explicitly. Callers cannot derive them by appending ".tbi" to
+    # the VCF path: each output lands in its own directory holding only the VCF.
+    File? filtered_depth_vcf_index = FilterBatchSamples.outlier_filtered_depth_vcf_index
+    File? filtered_pesr_vcf_index = FilterBatchSamples.outlier_filtered_pesr_vcf_index
     File cutoffs = FilterBatchSites.cutoffs
     File scores = FilterBatchSites.scores
     File RF_intermediate_files = FilterBatchSites.RF_intermediate_files

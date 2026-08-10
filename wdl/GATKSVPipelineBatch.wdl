@@ -3,6 +3,7 @@ version 1.0
 import "GatherSampleEvidenceBatch.wdl" as sampleevidence
 import "EvidenceQC.wdl" as evidenceqc
 import "GATKSVPipelinePhase1.wdl" as phase1
+import "CollectCoverage.wdl" as cov
 import "GenotypeBatch.wdl" as genotypebatch
 import "RegenotypeCNVs.wdl" as regenocnvs
 import "MakeCohortVcf.wdl" as makecohortvcf
@@ -31,6 +32,7 @@ workflow GATKSVPipelineBatch {
     # Optionally provide calls and evidence (override caller flags below)
     Array[File]? counts_files_input
     Array[File]? pe_files_input
+    Array[File]? pe_files_index_input
     Array[File]? sr_files_input
     Array[File]? sd_files_input
     Array[File?]? baf_files_input
@@ -82,7 +84,13 @@ workflow GATKSVPipelineBatch {
 
     # gCNV
     File contig_ploidy_model_tar
+    File contig_ploidy_priors
     Array[File] gcnv_model_tars
+
+    # WGD/EvidenceQC coverage uses a separate 100 bp interval list.
+    File wgd_count_intervals
+    File wgd_scoring_mask
+    Boolean run_evidence_qc_wgd = true
 
     # PlotSVCountsPerSample metrics from ClusterBatch in GATKSVPipelinePhase1
     Int? N_IQR_cutoff_plotting
@@ -194,6 +202,7 @@ workflow GATKSVPipelineBatch {
 
   Array[File] counts_files_ = if collect_coverage_ then select_all(select_first([GatherSampleEvidenceBatch.coverage_counts])) else select_first([counts_files_input])
   Array[File] pe_files_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_disc])) else select_first([pe_files_input])
+  Array[File] pe_files_index_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_disc_index])) else select_first([pe_files_index_input])
   Array[File] sr_files_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_split])) else select_first([sr_files_input])
   Array[File] sd_files_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_sd])) else select_first([sd_files_input])
 
@@ -229,13 +238,32 @@ workflow GATKSVPipelineBatch {
   Array[File] generated_stripy_vcfs_ = select_all(select_first([StripyWorkflow.stripy_vcf, []]))
   Array[File]? stripy_vcfs_ = if use_stripy then (if defined(stripy_vcfs_input) then select_first([stripy_vcfs_input]) else generated_stripy_vcfs_) else NONE_ARRAY_
 
+  scatter (i in range(length(samples))) {
+    call cov.CollectCounts as CollectWGDCounts {
+      input:
+        intervals = wgd_count_intervals,
+        cram_or_bam = select_first([bam_or_cram_files])[i],
+        cram_or_bam_idx = if defined(bam_or_cram_indexes) then select_first([bam_or_cram_indexes])[i] else select_first([bam_or_cram_files])[i] + ".crai",
+        sample_id = samples[i],
+        ref_fasta = reference_fasta,
+        ref_fasta_fai = reference_index,
+        ref_fasta_dict = reference_dict,
+        gatk_docker = gatk_docker,
+        disabled_read_filters = ["MappingQualityReadFilter"]
+    }
+  }
+
   call evidenceqc.EvidenceQC as EvidenceQC {
     input:
       batch=name,
       samples=samples,
       genome_file=genome_file,
       counts=counts_files_,
+      wgd_counts=CollectWGDCounts.counts,
+      run_vcf_qc = false,
+      wgd_scoring_mask = wgd_scoring_mask,
       run_ploidy = false,
+      run_wgd = run_evidence_qc_wgd,
       sv_pipeline_docker=sv_pipeline_docker,
       sv_pipeline_qc_docker=sv_pipeline_qc_docker,
       sv_base_mini_docker=sv_base_mini_docker,
@@ -255,6 +283,7 @@ workflow GATKSVPipelineBatch {
       chr_x=chr_x,
       chr_y=chr_y,
       contig_ploidy_model_tar=contig_ploidy_model_tar,
+      contig_ploidy_priors=contig_ploidy_priors,
       gcnv_model_tars=gcnv_model_tars,
       BAF_files=baf_files_input,
       counts=counts_files_,
@@ -262,6 +291,7 @@ workflow GATKSVPipelineBatch {
       bincov_matrix_index=EvidenceQC.bincov_matrix_index,
       N_IQR_cutoff_plotting = N_IQR_cutoff_plotting,
       PE_files=pe_files_,
+      PE_files_index=pe_files_index_,
       SR_files=sr_files_,
       SD_files=sd_files_,
       manta_vcfs=manta_vcfs_,
@@ -290,12 +320,29 @@ workflow GATKSVPipelineBatch {
 
   Array[File] stripy_vcfs_for_annotation_ = select_all([GATKSVPipelinePhase1.merged_stripy_vcf])
   Array[File] merge_vcfs_ = select_all([GATKSVPipelinePhase1.filtered_pesr_vcf, GATKSVPipelinePhase1.filtered_depth_vcf])
+  # Same order as merge_vcfs_ so the two arrays stay aligned under select_all.
+  Array[File] merge_vcfs_idx_ = select_all([GATKSVPipelinePhase1.filtered_pesr_vcf_index, GATKSVPipelinePhase1.filtered_depth_vcf_index])
   call tasks_makecohortvcf.ConcatVcfs as MergePesrDepthVcfs {
     input:
     vcfs = merge_vcfs_,
-    vcfs_idx = [merge_vcfs_[0] + ".tbi", merge_vcfs_[1] + ".tbi"],
+    vcfs_idx = merge_vcfs_idx_,
     allow_overlaps = true,
     outfile_prefix = "~{name}.merge_pesr_depth",
+    sv_base_mini_docker = sv_base_mini_docker
+  }
+
+  # Sites-only twin of the above, for RegenotypeCNVs. Its add_batch_samples.py takes
+  # fields [:9] of each record and appends its own FORMAT column, so a sample-bearing
+  # input produces a duplicate FORMAT and one field more than the header. Cohort-mode
+  # MergeBatchSites emits sites-only for the same reason. bcftools view -G drops the
+  # genotype columns without touching variant IDs, which the downstream BED join needs.
+  call tasks_makecohortvcf.ConcatVcfs as MergePesrDepthSitesVcf {
+    input:
+    vcfs = merge_vcfs_,
+    vcfs_idx = merge_vcfs_idx_,
+    allow_overlaps = true,
+    sites_only = true,
+    outfile_prefix = "~{name}.merge_pesr_depth.sites",
     sv_base_mini_docker = sv_base_mini_docker
   }
 
@@ -314,12 +361,16 @@ workflow GATKSVPipelineBatch {
   call genotypebatch.GenotypeBatch as GenotypeBatch {
     input:
       vcf=MergePesrDepthVcfs.concat_vcf,
+      vcf_index=MergePesrDepthVcfs.concat_vcf_idx,
       batch=name,
       rf_cutoffs=GATKSVPipelinePhase1.cutoffs,
       median_coverage=GATKSVPipelinePhase1.median_cov,
       rd_file=GATKSVPipelinePhase1.merged_bincov,
+      rd_file_index=GATKSVPipelinePhase1.merged_bincov_index,
       pe_file=GATKSVPipelinePhase1.merged_PE,
+      pe_file_index=GATKSVPipelinePhase1.merged_PE_index,
       sr_file=GATKSVPipelinePhase1.merged_SR,
+      sr_file_index=GATKSVPipelinePhase1.merged_SR_index,
       reference_dict=reference_dict,
         ploidy_table=CreatePloidyTableFromPed.out,
       contig_list = primary_contigs_list,
@@ -331,6 +382,13 @@ workflow GATKSVPipelineBatch {
   call regenocnvs.RegenotypeCNVs as RegenotypeCNVs {
     input:
       depth_vcfs=[GenotypeBatch.genotyped_depth_vcf],
+      depth_vcf_indexes=[GenotypeBatch.genotyped_depth_vcf_index],
+      # This batch's own merged pesr+depth sites VCF -- the single-batch equivalent of
+      # cohort-mode MergeBatchSites, and the same VCF GenotypeBatch is given above.
+      # RegenotypeCNVs joins it to batch_depth_vcfs by variant ID, so a sites VCF from
+      # any other cohort (e.g. a reference panel) shares no IDs and fails the join.
+      merge_batch_sites_vcf=MergePesrDepthSitesVcf.concat_vcf,
+      merge_batch_sites_vcf_index=MergePesrDepthSitesVcf.concat_vcf_idx,
       batch_depth_vcfs=[select_first([GATKSVPipelinePhase1.filtered_depth_vcf])],
       batches=[name],
       cohort=name,
@@ -353,6 +411,7 @@ workflow GATKSVPipelineBatch {
       merge_complex_genotype_vcfs = makecohortvcf_merge_complex_genotype_vcfs,
       ped_file=ped_file,
       pesr_vcfs=[GenotypeBatch.genotyped_pesr_vcf],
+      pesr_vcf_indexes=[GenotypeBatch.genotyped_pesr_vcf_index],
       depth_vcfs=RegenotypeCNVs.regenotyped_depth_vcfs,
       contig_list=primary_contigs_fai,
       allosome_fai=allosome_file,
@@ -362,7 +421,9 @@ workflow GATKSVPipelineBatch {
       chr_x=chr_x,
       chr_y=chr_y,
       disc_files=[GATKSVPipelinePhase1.merged_PE],
+      disc_files_index=[GATKSVPipelinePhase1.merged_PE_index],
       bincov_files=[GATKSVPipelinePhase1.merged_bincov],
+      bincov_indexes=[GATKSVPipelinePhase1.merged_bincov_index],
       cohort_name=name,
       rf_cutoff_files=[GATKSVPipelinePhase1.cutoffs],
       batches=[name],
@@ -380,6 +441,7 @@ workflow GATKSVPipelineBatch {
   call annotate.AnnotateVcf {
     input:
       vcf = MakeCohortVcf.vcf,
+      vcf_index = MakeCohortVcf.vcf_index,
       contig_list = primary_contigs_list,
       prefix = name,
       stripy_vcfs = stripy_vcfs_for_annotation_,
@@ -451,25 +513,32 @@ workflow GATKSVPipelineBatch {
       sv_pipeline_docker = sv_pipeline_docker
   }
 
+  # Prefer the real index outputs. The sibling-path convention (<file>.tbi) only holds
+  # for user-supplied inputs; for files we generated, each output lands in its own
+  # directory containing just that file, so the derived path does not exist. Fallbacks
+  # are String so an untaken branch never triggers a File existence check.
   scatter (i in range(length(samples))) {
-    File pe_files_index_ = pe_files_[i] + ".tbi"
-    File sr_files_index_ = sr_files_[i] + ".tbi"
+    String sr_files_sibling_index_ = sr_files_[i] + ".tbi"
   }
+  Array[File] sr_files_index_ = if collect_pesr_ then select_all(select_first([GatherSampleEvidenceBatch.pesr_split_index])) else sr_files_sibling_index_
 
   if (defined(manta_vcfs_)) {
     scatter (i in range(length(samples))) {
-      File manta_vcfs_index_ = select_first([manta_vcfs_])[i] + ".tbi"
+      String manta_vcfs_sibling_index_ = select_first([manta_vcfs_])[i] + ".tbi"
     }
+    Array[File] manta_vcfs_index_ = if defined(manta_vcfs_input) then select_first([manta_vcfs_sibling_index_]) else select_all(select_first([GatherSampleEvidenceBatch.manta_index]))
   }
   if (defined(melt_vcfs_)) {
     scatter (i in range(length(samples))) {
-      File melt_vcfs_index_ = select_first([melt_vcfs_])[i] + ".tbi"
+      String melt_vcfs_sibling_index_ = select_first([melt_vcfs_])[i] + ".tbi"
     }
+    Array[File] melt_vcfs_index_ = if defined(melt_vcfs_input) then select_first([melt_vcfs_sibling_index_]) else select_all(select_first([GatherSampleEvidenceBatch.melt_index]))
   }
   if (defined(wham_vcfs_)) {
     scatter (i in range(length(samples))) {
-      File wham_vcfs_index_ = select_first([wham_vcfs_])[i] + ".tbi"
+      String wham_vcfs_sibling_index_ = select_first([wham_vcfs_])[i] + ".tbi"
     }
+    Array[File] wham_vcfs_index_ = if defined(wham_vcfs_input) then select_first([wham_vcfs_sibling_index_]) else select_all(select_first([GatherSampleEvidenceBatch.wham_index]))
   }
 
   output {
@@ -479,13 +548,14 @@ workflow GATKSVPipelineBatch {
     File annotated_vcf_index = AnnotateVcf.annotated_vcf_index
     File metrics_file_batch = CatBatchMetrics.out
     File qc_file = BatchQC.out
-    File master_vcf_qc = MakeCohortVcf.vcf_qc
+    File? master_vcf_qc = MakeCohortVcf.vcf_qc
     File? metrics_file_makecohortvcf = MakeCohortVcf.metrics_file_makecohortvcf
     File final_sample_list = GATKSVPipelinePhase1.batch_samples_postOutlierExclusion_file
     File final_sample_outlier_list = GATKSVPipelinePhase1.outlier_samples_excluded_file
 
     # Additional outputs for creating a reference panel
     Array[File] counts = counts_files_
+    Array[File] wgd_counts = CollectWGDCounts.counts
     Array[File] PE_files = pe_files_
     Array[File] PE_files_index = pe_files_index_
     Array[File] SR_files = sr_files_
@@ -514,9 +584,9 @@ workflow GATKSVPipelineBatch {
     File merged_split_file_index = GATKSVPipelinePhase1.merged_SR_index
 
     File del_bed = GATKSVPipelinePhase1.merged_dels
-    File del_bed_index = GATKSVPipelinePhase1.merged_dels + ".tbi"
+    File del_bed_index = GATKSVPipelinePhase1.merged_dels_index
     File dup_bed = GATKSVPipelinePhase1.merged_dups
-    File dup_bed_index = GATKSVPipelinePhase1.merged_dups + ".tbi"
+    File dup_bed_index = GATKSVPipelinePhase1.merged_dups_index
 
     File? std_manta_vcf_tar = GATKSVPipelinePhase1.std_manta_vcf_tar
     File? std_melt_vcf_tar = GATKSVPipelinePhase1.std_melt_vcf_tar
@@ -576,4 +646,3 @@ workflow GATKSVPipelineBatch {
     Array[File] complex_genotype_vcf_indexes = MakeCohortVcf.complex_genotype_vcfs
   }
 }
-

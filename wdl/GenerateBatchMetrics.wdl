@@ -10,16 +10,26 @@ workflow GenerateBatchMetrics {
     String batch
 
     File? depth_vcf
+    File? depth_vcf_index
     File? dragen_vcf
+    File? dragen_vcf_index
     File? melt_vcf
+    File? melt_vcf_index
     File? scramble_vcf
+    File? scramble_vcf_index
     File? wham_vcf
+    File? wham_vcf_index
     File? manta_vcf
+    File? manta_vcf_index
 
     File pe_file
+    File pe_file_index
     File sr_file
+    File sr_file_index
     File baf_file
+    File baf_file_index
     File rd_file
+    File rd_file_index
 
     File median_file
     File ped_file
@@ -67,9 +77,7 @@ workflow GenerateBatchMetrics {
   String prefix = "~{batch}.batch_metrics"
 
   Array[File] vcfs_ = select_all([depth_vcf, manta_vcf, melt_vcf, scramble_vcf, wham_vcf])
-  scatter (i in range(length(vcfs_))) {
-    File vcfs_index_ = vcfs_[i] + ".tbi"
-  }
+  Array[File] vcfs_index_ = select_all([depth_vcf_index, manta_vcf_index, melt_vcf_index, scramble_vcf_index, wham_vcf_index])
 
   call taskscluster.CreatePloidyTableFromPed {
     input:
@@ -133,11 +141,11 @@ workflow GenerateBatchMetrics {
         median_file = median_file,
         ploidy_table=CreatePloidyTableFromPed.out,
         pe_file = pe_file,
-        pe_file_index = pe_file + ".tbi",
+        pe_file_index = pe_file_index,
         sr_file = sr_file,
-        sr_file_index = sr_file + ".tbi",
+        sr_file_index = sr_file_index,
         baf_file = baf_file,
-        baf_file_index = baf_file + ".tbi",
+        baf_file_index = baf_file_index,
         chr_x = chr_x,
         chr_y = chr_y,
         additional_args=additional_gatk_args_agg_pesr,
@@ -152,7 +160,7 @@ workflow GenerateBatchMetrics {
         output_prefix = "~{prefix}.aggregate_depth.shard_~{i}",
         median_file = median_file,
         rd_file = rd_file,
-        rd_file_index = rd_file + ".tbi",
+        rd_file_index = rd_file_index,
         additional_args=additional_gatk_args_agg_depth,
         java_mem_fraction = java_mem_fraction,
         gatk_docker = gatk_docker,

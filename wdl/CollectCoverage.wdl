@@ -109,7 +109,7 @@ task CondenseReadCounts {
         awk 'BEGIN{FS=OFS="\t";print "#Chr\tStart\tEnd\tNA21133"}{print $1,$2-1,$3,$4}' | bgzip > in.rd.txt.gz 
     tabix -0 -s1 -b2 -e3 in.rd.txt.gz 
     gatk --java-options -Xmx2g CondenseDepthEvidence -F in.rd.txt.gz -O out.rd.txt.gz --sequence-dictionary ref.dict \
-        --max-interval-size ~{default=2000 max_interval_size} --min-interval-size ~{default=101 min_interval_size}
+        --max-interval-size ~{default="2000" max_interval_size} --min-interval-size ~{default="101" min_interval_size}
     cat ref.dict <(zcat out.rd.txt.gz | \
         awk 'BEGIN{FS=OFS="\t";print "@RG\tID:GATKCopyNumber\tSM:~{sample}\nCONTIG\tSTART\tEND\tCOUNT"}{if(NR>1)print $1,$2+1,$3,$4}') | \
         bgzip > condensed_counts.~{sample}.tsv.gz

@@ -19,6 +19,7 @@ workflow GenotypeComplexVariants {
     Array[File] complex_resolve_vcf_indexes
 
     Array[File] bincov_files
+    Array[File]? bincov_indexes
 
     Array[File] genotyping_rd_tables
     Array[File] median_coverage_files
@@ -80,6 +81,7 @@ workflow GenotypeComplexVariants {
         records_per_shard=select_first([records_per_shard, 50000]),
         batches=batches,
         coverage_files=bincov_files,
+        coverage_file_indexes=bincov_indexes,
         genotyping_rd_tables=genotyping_rd_tables,
         ped_file=ped_file,
         median_coverage_files=median_coverage_files,

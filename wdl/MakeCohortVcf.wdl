@@ -18,10 +18,18 @@ workflow MakeCohortVcf {
     Boolean merge_complex_resolve_vcfs = false
     Boolean merge_complex_genotype_vcfs = false
 
+    # Run the final MainVcfQc (its Hardy-Weinberg plots fail for a single sample).
+    Boolean run_vcf_qc = true
+
     Array[File] pesr_vcfs
+    # Optional. Falls back to the sibling-path convention, which only holds for
+    # user-supplied inputs; callers passing generated VCFs must supply this.
+    Array[File]? pesr_vcf_indexes
     Array[File] depth_vcfs
     Array[File] disc_files
+    Array[File]? disc_files_index
     Array[File] bincov_files
+    Array[File]? bincov_indexes
 
     Array[File] genotyping_rd_tables
     Array[File] median_coverage_files
@@ -206,6 +214,7 @@ workflow MakeCohortVcf {
       batches=batches,
       ped_file=ped_file,
       pesr_vcfs=pesr_vcfs,
+      pesr_vcf_indexes=pesr_vcf_indexes,
       depth_vcfs=depth_vcfs,
       contig_list=contig_list,
       min_sr_background_fail_batches=min_sr_background_fail_batches,
@@ -243,9 +252,11 @@ workflow MakeCohortVcf {
       cohort_name=cohort_name,
       merge_vcfs=merge_complex_resolve_vcfs,
       cluster_vcfs=CombineBatches.combined_vcfs,
+      cluster_vcf_indexes=CombineBatches.combined_vcf_indexes,
       cluster_bothside_pass_lists=CombineBatches.cluster_bothside_pass_lists,
       cluster_background_fail_lists=CombineBatches.cluster_background_fail_lists,
       disc_files=disc_files,
+      disc_files_index=disc_files_index,
       rf_cutoff_files=rf_cutoff_files,
       contig_list=contig_list,
       cytobands=cytobands,
@@ -298,6 +309,7 @@ workflow MakeCohortVcf {
       depth_vcfs=depth_vcfs,
       ped_file=ped_file,
       bincov_files=bincov_files,
+      bincov_indexes=bincov_indexes,
       genotyping_rd_tables=genotyping_rd_tables,
       median_coverage_files=median_coverage_files,
       bin_exclude=bin_exclude,
@@ -377,9 +389,13 @@ workflow MakeCohortVcf {
       runtime_override_concat_cleaned_vcfs=runtime_override_concat_cleaned_vcfs
   }
 
+  # Gate the final VCF QC behind run_vcf_qc (was called unconditionally despite the
+  # flag). Its Hardy-Weinberg plots don't work for a single sample vs a reference panel.
+  if (run_vcf_qc) {
   call VcfQc.MainVcfQc {
     input:
       vcfs=[CleanVcf.cleaned_vcf],
+      vcf_indexes=[CleanVcf.cleaned_vcf_index],
       ped_file=ped_file,
       prefix="~{cohort_name}.cleaned",
       sv_per_shard=2500,
@@ -416,12 +432,13 @@ workflow MakeCohortVcf {
       runtime_override_split_shuffled_list=runtime_override_split_shuffled_list,
       runtime_override_merge_and_tar_shard_benchmarks=runtime_override_merge_and_tar_shard_benchmarks
   }
+  }
 
 
   output {
     File vcf = CleanVcf.cleaned_vcf
     File vcf_index = CleanVcf.cleaned_vcf_index
-    File vcf_qc = MainVcfQc.sv_vcf_qc_output
+    File? vcf_qc = MainVcfQc.sv_vcf_qc_output
 
     # If merge_intermediate_vcfs enabled
     File? cluster_vcf = CombineBatches.combine_batches_merged_vcf
