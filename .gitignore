@@ -16,3 +16,4 @@ src/svtk/svtk/vcfcluster.pyc
 /inputs/build/
 /inputs/values/google_cloud.*.json
 slurm_logs/
+della/
